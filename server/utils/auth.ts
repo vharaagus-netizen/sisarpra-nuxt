@@ -114,6 +114,17 @@ export async function requireStaff(event: H3Event): Promise<AuthUser> {
   return user
 }
 
+export async function requireAdmin(event: H3Event): Promise<AuthUser> {
+  const user = await requireUser(event)
+  if (user.role !== 'admin') {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Akses ditolak: Hanya Super Admin yang memiliki hak akses ini.',
+    })
+  }
+  return user
+}
+
 export async function requireStaffOrTeacher(event: H3Event): Promise<AuthUser> {
   const user = await requireUser(event)
   if (!['admin', 'petugas', 'guru'].includes(user.role)) {

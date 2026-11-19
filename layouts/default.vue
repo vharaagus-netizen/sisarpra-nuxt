@@ -163,19 +163,6 @@ const triggerPwaInstall = () => {
               </NuxtLink>
 
               <NuxtLink
-                to="/procurements"
-                :class="[
-                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200',
-                  isActive('/procurements')
-                    ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-white'
-                ]"
-              >
-                <span>📝</span>
-                <span>Usulan Sarpras</span>
-              </NuxtLink>
-
-              <NuxtLink
                 to="/damages"
                 :class="[
                   'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200',
@@ -222,6 +209,19 @@ const triggerPwaInstall = () => {
                 >
                   <span>📈</span>
                   <span>Laporan & Rekapitulasi</span>
+                </NuxtLink>
+
+                <NuxtLink
+                  to="/procurements"
+                  :class="[
+                    'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200',
+                    isActive('/procurements')
+                      ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-white'
+                  ]"
+                >
+                  <span>📋</span>
+                  <span>Pengadaan Barang (Sarpra & Lab)</span>
                 </NuxtLink>
               </div>
             </div>

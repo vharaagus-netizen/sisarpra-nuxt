@@ -1,8 +1,8 @@
 import { prisma } from '~/server/utils/prisma'
-import { requireStaff } from '~/server/utils/auth'
+import { requireAdmin } from '~/server/utils/auth'
 
 export default defineEventHandler(async (event) => {
-  const staff = await requireStaff(event)
+  const admin = await requireAdmin(event)
   const body = await readBody(event)
   const { id, status, catatan_admin } = body || {}
 
@@ -20,15 +20,18 @@ export default defineEventHandler(async (event) => {
     data: {
       status,
       catatan_admin: catatan_admin ? String(catatan_admin).trim() : null,
-      reviewed_by: BigInt(staff.id),
+      reviewed_by: BigInt(admin.id),
       reviewed_at: new Date()
+    },
+    include: {
+      user: { select: { id: true, name: true, role: true } },
+      reviewer: { select: { id: true, name: true, role: true } }
     }
   })
 
   return {
     success: true,
-    message: `Status usulan berhasil diperbarui menjadi ${status}.`,
+    message: `Status usulan berhasil diperbarui menjadi "${status}".`,
     procurement: updated
   }
 })
-

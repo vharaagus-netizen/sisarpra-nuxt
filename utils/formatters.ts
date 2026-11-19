@@ -24,3 +24,14 @@ export function formatTime(val: any): string {
   }
   return str.substring(0, 5)
 }
+
+export function formatRupiah(val: any): string {
+  if (val === null || val === undefined || val === '') return 'Rp 0'
+  const num = Number(val)
+  if (isNaN(num)) return 'Rp 0'
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0
+  }).format(num)
+}

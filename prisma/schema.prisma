@@ -167,10 +167,16 @@ model ItemLoanDetail {
 
 model ProcurementRequest {
   id                BigInt    @id @default(autoincrement())
+  nomor_pengajuan   String?   @unique @db.VarChar(100)
+  jenis_pengadaan   String    @default("sarpra") @db.VarChar(50) // sarpra, lab
   user_id           BigInt
   nama_barang       String    @db.VarChar(255)
   kategori          String    @default("Umum") @db.VarChar(100)
+  lab_type          String?   @db.VarChar(50) // komputer, kimia, fisika, biologi
+  item_type         String?   @db.VarChar(50) // alat, bahan_habis_pakai
   jumlah            Int       @default(1)
+  satuan            String    @default("unit") @db.VarChar(50)
+  spesifikasi       String?   @db.Text
   estimasi_biaya    BigInt?
   urgensi           String    @default("sedang") @db.VarChar(50) // rendah, sedang, tinggi, mendesak
   alasan_kebutuhan  String    @db.Text
@@ -185,6 +191,8 @@ model ProcurementRequest {
   user     User  @relation("UserProcurements", fields: [user_id], references: [id], onDelete: Cascade)
   reviewer User? @relation("ReviewedProcurements", fields: [reviewed_by], references: [id], onDelete: SetNull)
 
+  @@index([jenis_pengadaan])
+  @@index([status])
   @@index([user_id])
   @@index([reviewed_by])
   @@map("procurement_requests")
