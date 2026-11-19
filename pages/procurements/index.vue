@@ -1022,6 +1022,22 @@ const getLabTypeLabel = (lt) => {
             ></textarea>
           </div>
 
+          <!-- Info Otomatis Masuk Inventaris saat Terealisasi -->
+          <div
+            v-if="reviewForm.status === 'terealisasi'"
+            class="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-[11px] text-purple-800 dark:text-purple-300 flex items-start gap-2 animate-fade-in"
+          >
+            <span class="text-base leading-none">📦</span>
+            <div>
+              <div class="font-bold">Otomatis Masuk Inventaris:</div>
+              <p class="mt-0.5 leading-snug">
+                Barang ini akan otomatis ditambahkan ke
+                <strong>{{ selectedProcurement.jenis_pengadaan === 'lab' ? 'Inventaris Lab' : 'Master Barang & Aset' }}</strong>
+                dengan stok {{ selectedProcurement.jumlah }} {{ selectedProcurement.satuan || 'unit' }} dan kode inventaris resmi!
+              </p>
+            </div>
+          </div>
+
           <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
             <button
               type="button"
