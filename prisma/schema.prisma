@@ -1,0 +1,350 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            BigInt    @id @default(autoincrement())
+  name          String    @db.VarChar(255)
+  email         String    @unique @db.VarChar(255)
+  password      String    @db.VarChar(255)
+  role          String    @default("siswa") @db.VarChar(50) // admin, petugas, guru, siswa
+  nomor_induk   String?   @db.VarChar(100)
+  no_telepon    String?   @db.VarChar(50)
+  kelas_jurusan String?   @db.VarChar(100)
+  remember_token String?  @db.VarChar(100)
+  created_at    DateTime? @default(now())
+  updated_at    DateTime? @updatedAt
+
+  room_reservations          RoomReservation[] @relation("UserRoomReservations")
+  approved_room_reservations RoomReservation[] @relation("ApprovedRoomReservations")
+  checked_room_reservations  RoomReservation[] @relation("CheckedRoomReservations")
+  item_loans                 ItemLoan[]        @relation("UserItemLoans")
+  approved_item_loans        ItemLoan[]        @relation("ApprovedItemLoans")
+  procurement_requests       ProcurementRequest[] @relation("UserProcurements")
+  reviewed_procurements      ProcurementRequest[] @relation("ReviewedProcurements")
+  lockers                    Locker[]
+  lab_usage_logs             LabUsageLog[]        @relation("UserLabUsageLogs")
+  lab_maintenance_logs       LabMaintenanceLog[]  @relation("UserLabMaintenanceLogs")
+  damage_reports             DamageReport[]       @relation("UserDamageReports")
+  technician_damage_reports  DamageReport[]       @relation("TechnicianDamageReports")
+  damage_action_logs         DamageActionLog[]    @relation("UserDamageActionLogs")
+
+  @@map("users")
+}
+
+model Category {
+  id            BigInt    @id @default(autoincrement())
+  nama_kategori String    @db.VarChar(255)
+  deskripsi     String?   @db.Text
+  created_at    DateTime? @default(now())
+  updated_at    DateTime? @updatedAt
+
+  items         Item[]
+
+  @@map("categories")
+}
+
+model Room {
+  id         BigInt    @id @default(autoincrement())
+  kode_ruang String    @unique @db.VarChar(100)
+  nama_ruang String    @db.VarChar(255)
+  kapasitas  Int       @default(0)
+  lokasi     String?   @db.VarChar(255)
+  fasilitas  String?   @db.Text
+  status     String    @default("tersedia") @db.VarChar(50) // tersedia, perbaikan, tidak_tersedia
+  foto       String?   @db.VarChar(255)
+  created_at DateTime? @default(now())
+  updated_at DateTime? @updatedAt
+
+  reservations RoomReservation[]
+  lab_items    LabItem[]
+  damage_reports DamageReport[]
+
+  @@map("rooms")
+}
+
+model Item {
+  id                 BigInt    @id @default(autoincrement())
+  category_id        BigInt
+  kode_barang        String    @unique @db.VarChar(100)
+  nama_barang        String    @db.VarChar(255)
+  merk               String?   @db.VarChar(255)
+  spesifikasi        String?   @db.Text
+  total_stok         Int       @default(1)
+  stok_tersedia      Int       @default(1)
+  kondisi            String    @default("baik") @db.VarChar(50) // baik, rusak_ringan, rusak_berat
+  lokasi_penyimpanan String?   @db.VarChar(255)
+  foto               String?   @db.VarChar(255)
+  created_at         DateTime? @default(now())
+  updated_at         DateTime? @updatedAt
+
+  category     Category         @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  loan_details ItemLoanDetail[]
+  damage_reports DamageReport[]
+
+  @@index([category_id])
+  @@map("items")
+}
+
+model RoomReservation {
+  id                   BigInt    @id @default(autoincrement())
+  nomor_peminjaman     String    @unique @db.VarChar(100)
+  user_id              BigInt
+  room_id              BigInt
+  tanggal_pinjam       DateTime  @db.Date
+  jam_mulai            DateTime  @db.Time(0)
+  jam_selesai          DateTime  @db.Time(0)
+  tujuan_kegiatan      String    @db.Text
+  status               String    @default("pending") @db.VarChar(50) // pending, disetujui, ditolak, selesai, batal
+  catatan_petugas      String?   @db.Text
+  approved_by          BigInt?
+  kondisi_kebersihan   String?   @default("bersih") @db.VarChar(50)
+  kondisi_fasilitas    String?   @default("baik") @db.VarChar(50)
+  catatan_pengembalian String?   @db.Text
+  checked_at           DateTime?
+  checked_by           BigInt?
+  created_at           DateTime? @default(now())
+  updated_at           DateTime? @updatedAt
+
+  user     User  @relation("UserRoomReservations", fields: [user_id], references: [id], onDelete: Cascade)
+  room     Room  @relation(fields: [room_id], references: [id], onDelete: Cascade)
+  approver User? @relation("ApprovedRoomReservations", fields: [approved_by], references: [id], onDelete: SetNull)
+  checker  User? @relation("CheckedRoomReservations", fields: [checked_by], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([room_id])
+  @@index([approved_by])
+  @@index([checked_by])
+  @@map("room_reservations")
+}
+
+model ItemLoan {
+  id                       BigInt    @id @default(autoincrement())
+  nomor_peminjaman         String    @unique @db.VarChar(100)
+  user_id                  BigInt
+  tanggal_pinjam           DateTime  @db.Date
+  tanggal_rencana_kembali  DateTime  @db.Date
+  tanggal_realisasi_kembali DateTime?
+  keperluan                String    @db.Text
+  status                   String    @default("pending") @db.VarChar(50) // pending, disetujui, sedang_dipinjam, selesai, ditolak, batal
+  approved_by              BigInt?
+  catatan                  String?   @db.Text
+  created_at               DateTime? @default(now())
+  updated_at               DateTime? @updatedAt
+
+  user     User             @relation("UserItemLoans", fields: [user_id], references: [id], onDelete: Cascade)
+  approver User?            @relation("ApprovedItemLoans", fields: [approved_by], references: [id], onDelete: SetNull)
+  details  ItemLoanDetail[]
+
+  @@index([user_id])
+  @@index([approved_by])
+  @@map("item_loans")
+}
+
+model ItemLoanDetail {
+  id              BigInt    @id @default(autoincrement())
+  item_loan_id    BigInt
+  item_id         BigInt
+  jumlah          Int       @default(1)
+  kondisi_sebelum String?   @default("baik") @db.VarChar(50)
+  kondisi_sesudah String?   @db.VarChar(50)
+  catatan_kondisi String?   @db.Text
+  created_at      DateTime? @default(now())
+  updated_at      DateTime? @updatedAt
+
+  loan ItemLoan @relation(fields: [item_loan_id], references: [id], onDelete: Cascade)
+  item Item     @relation(fields: [item_id], references: [id], onDelete: Cascade)
+
+  @@index([item_loan_id])
+  @@index([item_id])
+  @@map("item_loan_details")
+}
+
+model ProcurementRequest {
+  id                BigInt    @id @default(autoincrement())
+  user_id           BigInt
+  nama_barang       String    @db.VarChar(255)
+  kategori          String    @default("Umum") @db.VarChar(100)
+  jumlah            Int       @default(1)
+  estimasi_biaya    BigInt?
+  urgensi           String    @default("sedang") @db.VarChar(50) // rendah, sedang, tinggi, mendesak
+  alasan_kebutuhan  String    @db.Text
+  lokasi_penempatan String?   @db.VarChar(255)
+  status            String    @default("menunggu_review") @db.VarChar(50) // menunggu_review, disetujui, dianggarkan, ditolak, terealisasi
+  catatan_admin     String?   @db.Text
+  reviewed_by       BigInt?
+  reviewed_at       DateTime?
+  created_at        DateTime? @default(now())
+  updated_at        DateTime? @updatedAt
+
+  user     User  @relation("UserProcurements", fields: [user_id], references: [id], onDelete: Cascade)
+  reviewer User? @relation("ReviewedProcurements", fields: [reviewed_by], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([reviewed_by])
+  @@map("procurement_requests")
+}
+
+model Locker {
+  id              BigInt    @id @default(autoincrement())
+  nomor_loker     String    @unique @db.VarChar(50)
+  status          String    @default("tersedia") @db.VarChar(50) // tersedia, terisi, perbaikan
+  user_id         BigInt?
+  nama_pemilik    String?   @db.VarChar(255)
+  role_pemilik    String?   @db.VarChar(50) // guru, siswa, staf, umum
+  nomor_induk     String?   @db.VarChar(100)
+  nomor_kontak    String?   @db.VarChar(100)
+  keperluan       String?   @db.Text
+  isi_loker       String?   @db.Text
+  nomor_kunci     String?   @db.VarChar(100)
+  lokasi          String?   @default("Koridor Utama Sarpra") @db.VarChar(255)
+  tanggal_mulai   DateTime? @db.Date
+  tanggal_selesai DateTime? @db.Date
+  catatan         String?   @db.Text
+  created_at      DateTime? @default(now())
+  updated_at      DateTime? @updatedAt
+
+  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([status])
+  @@map("lockers")
+}
+
+model LabItem {
+  id                 BigInt    @id @default(autoincrement())
+  room_id            BigInt?
+  lab_type           String    @db.VarChar(50) // komputer, fisika, kimia, biologi
+  item_type          String    @default("alat") @db.VarChar(50) // alat, bahan_habis_pakai, kit
+  kode_item          String    @unique @db.VarChar(100)
+  nama_item          String    @db.VarChar(255)
+  kategori           String?   @db.VarChar(100)
+  merk               String?   @db.VarChar(255)
+  stok_total         Int       @default(1)
+  stok_tersedia      Int       @default(1)
+  stok_minimum       Int       @default(1)
+  satuan             String    @default("unit") @db.VarChar(50) // unit, ml, gram, botol, kit, set, pcs
+  kondisi            String    @default("baik") @db.VarChar(50) // baik, rusak_ringan, rusak_berat, habis
+  lokasi_penyimpanan String?   @db.VarChar(255)
+  tanggal_kadaluarsa DateTime? @db.Date
+  jadwal_kalibrasi   DateTime? @db.Date
+  spesifikasi_khusus String?   @db.Text
+  keterangan         String?   @db.Text
+  foto               String?   @db.VarChar(255)
+  created_at         DateTime? @default(now())
+  updated_at         DateTime? @updatedAt
+
+  room             Room?               @relation(fields: [room_id], references: [id], onDelete: SetNull)
+  usage_logs       LabUsageLog[]
+  maintenance_logs LabMaintenanceLog[]
+
+  @@index([room_id])
+  @@index([lab_type])
+  @@index([item_type])
+  @@map("lab_items")
+}
+
+model LabUsageLog {
+  id                   BigInt    @id @default(autoincrement())
+  lab_item_id          BigInt
+  user_id              BigInt
+  tanggal_praktikum    DateTime  @db.Date
+  nama_guru            String?   @db.VarChar(255)
+  kelas_jurusan        String    @db.VarChar(100)
+  judul_praktikum      String    @db.VarChar(255)
+  jumlah_digunakan     Int       @default(1)
+  sisa_stok_setelahnya Int
+  kondisi_alat_kembali String?   @default("baik") @db.VarChar(50)
+  catatan              String?   @db.Text
+  created_at           DateTime? @default(now())
+
+  item LabItem @relation(fields: [lab_item_id], references: [id], onDelete: Cascade)
+  user User    @relation("UserLabUsageLogs", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([lab_item_id])
+  @@index([user_id])
+  @@map("lab_usage_logs")
+}
+
+model LabMaintenanceLog {
+  id               BigInt    @id @default(autoincrement())
+  lab_item_id      BigInt
+  user_id          BigInt
+  tanggal_tindakan DateTime  @db.Date
+  jenis_tindakan   String    @db.VarChar(100) // install_ulang, ganti_part, kalibrasi, pembersihan, perbaikan
+  deskripsi        String    @db.Text
+  status_akhir     String    @default("selesai") @db.VarChar(50)
+  biaya            BigInt?
+  created_at       DateTime? @default(now())
+
+  item LabItem @relation(fields: [lab_item_id], references: [id], onDelete: Cascade)
+  user User    @relation("UserLabMaintenanceLogs", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([lab_item_id])
+  @@index([user_id])
+  @@map("lab_maintenance_logs")
+}
+
+model DamageReport {
+  id                   BigInt    @id @default(autoincrement())
+  nomor_laporan        String    @unique @db.VarChar(100)
+  pelapor_id           BigInt
+  room_id              BigInt?
+  item_id              BigInt?
+  judul_kerusakan      String    @db.VarChar(255)
+  deskripsi_kerusakan  String    @db.Text
+  lokasi_keterangan    String?   @db.VarChar(255)
+  kategori             String    @default("elektronik") @db.VarChar(50) // elektronik, mebeler, sanitasi, bangunan, it_lab, lainnya
+  tingkat_urgensi      String    @default("sedang") @db.VarChar(50) // rendah, sedang, tinggi, mendesak
+  status               String    @default("menunggu") @db.VarChar(50) // menunggu, diproses, tunggu_sparepart, selesai, ditolak
+  foto_sebelum         String?   @db.Text
+  foto_sesudah         String?   @db.Text
+  ditugaskan_ke        BigInt?
+  tindakan_perbaikan   String?   @db.Text
+  estimasi_biaya       BigInt?
+  realisasi_biaya      BigInt?
+  tanggal_lapor        DateTime  @default(now())
+  tanggal_selesai      DateTime?
+  created_at           DateTime? @default(now())
+  updated_at           DateTime? @updatedAt
+
+  pelapor    User               @relation("UserDamageReports", fields: [pelapor_id], references: [id], onDelete: Cascade)
+  teknisi    User?              @relation("TechnicianDamageReports", fields: [ditugaskan_ke], references: [id], onDelete: SetNull)
+  room       Room?              @relation(fields: [room_id], references: [id], onDelete: SetNull)
+  item       Item?              @relation(fields: [item_id], references: [id], onDelete: SetNull)
+  logs       DamageActionLog[]
+
+  @@index([pelapor_id])
+  @@index([room_id])
+  @@index([item_id])
+  @@index([ditugaskan_ke])
+  @@index([status])
+  @@index([tingkat_urgensi])
+  @@map("damage_reports")
+}
+
+model DamageActionLog {
+  id                BigInt    @id @default(autoincrement())
+  damage_report_id  BigInt
+  user_id           BigInt
+  status_lama       String?   @db.VarChar(50)
+  status_baru       String    @db.VarChar(50)
+  catatan_tindakan  String    @db.Text
+  created_at        DateTime? @default(now())
+
+  report DamageReport @relation(fields: [damage_report_id], references: [id], onDelete: Cascade)
+  user   User         @relation("UserDamageActionLogs", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([damage_report_id])
+  @@index([user_id])
+  @@map("damage_action_logs")
+}
+
+
+
+

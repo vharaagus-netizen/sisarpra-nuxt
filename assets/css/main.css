@@ -1,0 +1,413 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   PALET WARNA ORANYE ELEGAN (LIGHT & DARK MODE)
+   Sistem Informasi Sarana & Prasarana (SISARPRA) SMA Nusaputera Semarang
+   Aturan 60-30-10 & Rasio Kontras Terbaca Optimal
+   ========================================================================== */
+
+:root {
+    /* 1. PALET WARNA ORANYE (LIGHT MODE) */
+    --bg-main: #FFF7EE;          /* 60% Background Utama: Krem/Putih Hangat */
+    --bg-main-warm: #FFF0DD;     /* Background Varian Hangat */
+    --bg-card: #FFFFFF;          /* 30% Background Card/Container: Putih Bersih */
+    --text-main: #1E1E1E;        /* Teks Utama: Abu-abu sangat gelap (Kontras Tinggi) */
+    --text-sec: #633A00;         /* Teks Sekunder: Kecoklatan */
+    --text-muted: #5A5A5A;       /* Teks Sekunder: Abu netral */
+    --accent-orange: #FF6F00;    /* 10% Primary Accent: Oranye terang bertenaga */
+    --accent-terracotta: #E76F51;/* Oranye terracotta */
+    --support-cream: #FDFBD4;    /* Warna Pendukung: Krem lembut */
+    --support-sage: #98A869;     /* Warna Pendukung: Hijau sage */
+    --border-card: #F0E6D8;      /* Border Halus Container */
+}
+
+.dark {
+    /* 2. PALET WARNA ORANYE (DARK MODE) */
+    --bg-main: #0A0A0A;          /* 60% Background Utama: Hitam pekat */
+    --bg-main-alt: #121212;      /* Background Gelap Alternatif */
+    --bg-card: #1E1E1E;          /* 30% Background Card/Container: Abu-abu gelap */
+    --bg-card-alt: #262626;      /* Surface Card Sekunder */
+    --text-main: #FFF7EE;        /* Teks Utama: Putih gading/krem lembut (Tidak silau) */
+    --text-sec: #B39D83;         /* Teks Sekunder: Abu-abu kecoklatan hangat */
+    --accent-orange: #FFA53F;    /* 10% Primary Accent Dark: Neon/Soft Orange */
+    --accent-orange-dark: #FE8D01;/* Dark Orange saturasi pas untuk latar gelap */
+    --support-burnt: #C5620B;    /* Warna Pendukung: Burnt orange (border & nonaktif) */
+    --border-card: rgba(197, 98, 11, 0.35); /* Border Card Burnt Orange */
+}
+
+/* Base Body Styles */
+html, body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ==========================================================================
+   KOMBINASI GAYA 1 (MINIMALIS ELEGAN) + GAYA 2 (GLASSMORPHISM & AURORA GLOW)
+   ========================================================================== */
+
+/* Aurora Floating Orbs Background Keyframes */
+@keyframes aurora-float-1 {
+    0%, 100% {
+        transform: translate(0px, 0px) scale(1);
+    }
+    33% {
+        transform: translate(30px, -40px) scale(1.12);
+    }
+    66% {
+        transform: translate(-25px, 20px) scale(0.92);
+    }
+}
+
+@keyframes aurora-float-2 {
+    0%, 100% {
+        transform: translate(0px, 0px) scale(1);
+    }
+    33% {
+        transform: translate(-35px, 35px) scale(1.08);
+    }
+    66% {
+        transform: translate(25px, -25px) scale(0.95);
+    }
+}
+
+@keyframes aurora-float-3 {
+    0%, 100% {
+        transform: translate(0px, 0px) scale(1);
+    }
+    50% {
+        transform: translate(40px, 30px) scale(1.15);
+    }
+}
+
+/* Shimmer Light Reflection */
+@keyframes shimmer-sweep {
+    0% {
+        transform: translateX(-150%) skewX(-20deg);
+    }
+    100% {
+        transform: translateX(250%) skewX(-20deg);
+    }
+}
+
+/* Entrance Animations */
+@keyframes fade-slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        opacity: 0.4;
+        filter: drop-shadow(0 0 15px rgba(255, 111, 0, 0.3));
+    }
+    50% {
+        opacity: 0.8;
+        filter: drop-shadow(0 0 25px rgba(254, 141, 1, 0.55));
+    }
+}
+
+/* Utility Animation Classes */
+.animate-aurora-1 {
+    animation: aurora-float-1 18s ease-in-out infinite alternate;
+}
+
+.animate-aurora-2 {
+    animation: aurora-float-2 22s ease-in-out infinite alternate;
+}
+
+.animate-aurora-3 {
+    animation: aurora-float-3 26s ease-in-out infinite alternate;
+}
+
+.animate-entrance {
+    animation: fade-slide-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-entrance-delay-1 {
+    animation: fade-slide-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+.animate-entrance-delay-2 {
+    animation: fade-slide-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
+.animate-entrance-delay-3 {
+    animation: fade-slide-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+.animate-entrance-delay-4 {
+    animation: fade-slide-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+}
+
+/* Glass Card with Hover Lift & Warm Orange Shimmer Effect */
+.glass-card-interactive {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.glass-card-interactive:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 30px -10px rgba(255, 111, 0, 0.12), 0 10px 15px -5px rgba(0, 0, 0, 0.05);
+}
+
+.dark .glass-card-interactive:hover {
+    box-shadow: 0 20px 35px -10px rgba(255, 165, 63, 0.18), 0 0 20px rgba(197, 98, 11, 0.2);
+    border-color: rgba(197, 98, 11, 0.45);
+}
+
+/* Button Shimmer Overlay */
+.btn-shimmer {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.25) 50%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    animation: shimmer-sweep 5s infinite ease-in-out;
+    pointer-events: none;
+}
+
+/* ==========================================================================
+   GAYA 4 (RADAR PULSE STATUS) — Live Status Indicators & Progress Bars
+   ========================================================================== */
+
+/* Radar Ring Keyframe */
+@keyframes radar-ring {
+    0% {
+        transform: scale(1);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(2.8);
+        opacity: 0;
+    }
+}
+
+@keyframes radar-ring-slow {
+    0% {
+        transform: scale(1);
+        opacity: 0.4;
+    }
+    100% {
+        transform: scale(3.5);
+        opacity: 0;
+    }
+}
+
+.status-dot-radar {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.status-dot-radar::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 9999px;
+    animation: radar-ring 2s ease-out infinite;
+}
+
+.status-dot-radar::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 9999px;
+    animation: radar-ring-slow 2s ease-out 0.6s infinite;
+}
+
+.status-dot-radar-green::before,
+.status-dot-radar-green::after {
+    background: rgba(34, 197, 94, 0.55);
+}
+
+.status-dot-radar-amber::before,
+.status-dot-radar-amber::after {
+    background: rgba(245, 158, 11, 0.55);
+}
+
+.status-dot-radar-red::before,
+.status-dot-radar-red::after {
+    background: rgba(239, 68, 68, 0.55);
+}
+
+.status-dot-radar-blue::before,
+.status-dot-radar-blue::after {
+    background: rgba(59, 130, 246, 0.55);
+}
+
+/* Progress Bar Fill Animation */
+@keyframes progress-fill {
+    from {
+        width: 0%;
+    }
+}
+
+.animate-progress {
+    animation: progress-fill 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+
+/* ==========================================================================
+   OFFICIAL DOCUMENT PRINT STYLES (@media print)
+   Isolates ONLY the official letterhead document (Surat Jalan / Surat Izin / Laporan)
+   Hides completely all web UI, sidebars, headers, background decorations, and buttons.
+   ========================================================================== */
+@media print {
+    /* 1. Sembunyikan TOTAL seluruh elemen website/antarmuka web */
+    aside,
+    header,
+    nav,
+    footer,
+    button,
+    input,
+    select,
+    textarea,
+    #app-sidebar,
+    #app-header,
+    .print\:hidden,
+    .no-print,
+    .print-hidden,
+    [class*="animate-aurora"],
+    [class*="status-dot-radar"],
+    header.sticky,
+    aside.fixed,
+    svg {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    /* 2. Reset tampilan halaman cetak ke standar kertas putih A4 */
+    html,
+    body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        min-height: auto !important;
+        width: 100% !important;
+        overflow: visible !important;
+        font-family: 'Times New Roman', Times, serif !important;
+        font-size: 10.5pt !important;
+        line-height: 1.35 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* 3. Kontainer pembungkus Nuxt & Layout */
+    #__nuxt,
+    div.min-h-screen,
+    main {
+        display: block !important;
+        background: #ffffff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        min-height: auto !important;
+        height: auto !important;
+        border: none !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+    }
+
+    /* 4. Kontainer Dokumen Cetak Resmi (Surat Jalan & Surat Izin) - WAJIB TAMPIL */
+    #print-modal-container,
+    .print-document-container,
+    div.print-document-container {
+        position: static !important;
+        display: block !important;
+        visibility: visible !important;
+        height: auto !important;
+        min-height: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        box-shadow: none !important;
+        border: none !important;
+        overflow: visible !important;
+        z-index: 999999 !important;
+        page-break-after: avoid !important;
+    }
+
+    #print-modal-container *,
+    .print-document-container * {
+        visibility: visible !important;
+    }
+
+    .print-document-body,
+    div.print-document-body {
+        position: static !important;
+        display: block !important;
+        visibility: visible !important;
+        height: auto !important;
+        min-height: auto !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        color: #000000 !important;
+        background: #ffffff !important;
+        border: none !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+        font-family: 'Times New Roman', Times, serif !important;
+        page-break-after: avoid !important;
+    }
+
+    /* 5. Pastikan gambar logo dan garis tampil tajam */
+    img {
+        max-width: 100% !important;
+        print-color-adjust: exact !important;
+        -webkit-print-color-adjust: exact !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        page-break-inside: auto !important;
+    }
+
+    tr {
+        page-break-inside: avoid !important;
+        page-break-after: auto !important;
+    }
+
+    th, td {
+        border-color: #000000 !important;
+    }
+
+    /* 6. Aturan Margin Kertas Resmi (1 Halaman Pas) */
+    @page {
+        size: A4 portrait;
+        margin: 10mm 15mm 10mm 15mm;
+    }
+}
