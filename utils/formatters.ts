@@ -35,3 +35,23 @@ export function formatRupiah(val: any): string {
     maximumFractionDigits: 0
   }).format(num)
 }
+
+export function formatDateFormalBAST(val: any) {
+  if (!val) return { hari: '..........', tanggal: '......', bulan: '..............', tahun: '.......................', full: 'Semarang, ..................' }
+  const d = new Date(val)
+  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+  
+  const hari = days[d.getDay()] || '..........'
+  const tgl = String(d.getDate())
+  const bln = months[d.getMonth()] || '..............'
+  const thn = String(d.getFullYear())
+  
+  return {
+    hari,
+    tanggal: tgl,
+    bulan: bln,
+    tahun: thn,
+    full: `${hari}, ${tgl} ${bln} ${thn}`
+  }
+}

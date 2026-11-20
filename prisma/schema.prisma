@@ -33,6 +33,7 @@ model User {
   damage_reports             DamageReport[]       @relation("UserDamageReports")
   technician_damage_reports  DamageReport[]       @relation("TechnicianDamageReports")
   damage_action_logs         DamageActionLog[]    @relation("UserDamageActionLogs")
+  book_handovers             BookHandover[]       @relation("UserBookHandovers")
 
   @@map("users")
 }
@@ -351,6 +352,84 @@ model DamageActionLog {
   @@index([damage_report_id])
   @@index([user_id])
   @@map("damage_action_logs")
+}
+
+model Book {
+  id              BigInt    @id @default(autoincrement())
+  kode_buku       String    @unique @db.VarChar(100) // e.g. BK-PKWU-X-001
+  judul           String    @db.VarChar(255)
+  kelas           String    @db.VarChar(50) // X, XI, XII, Semua
+  kurikulum       String    @default("Kurikulum Merdeka") @db.VarChar(100)
+  mata_pelajaran  String?   @db.VarChar(100)
+  penerbit        String?   @db.VarChar(255)
+  tahun_terbit    Int?
+  tahun_anggaran  Int?      @default(2026)
+  sumber_dana     String    @default("BOS") @db.VarChar(100) // BOS, BOS Kinerja, Mandiri
+  total_stok      Int       @default(1)
+  stok_tersedia   Int       @default(1)
+  stok_dipinjam   Int       @default(0)
+  lokasi_rak      String?   @db.VarChar(255)
+  kondisi         String    @default("baik") @db.VarChar(50)
+  keterangan      String?   @db.Text
+  created_at      DateTime? @default(now())
+  updated_at      DateTime? @updatedAt
+
+  handover_items  BookHandoverItem[]
+
+  @@index([kelas])
+  @@index([kurikulum])
+  @@index([sumber_dana])
+  @@map("books")
+}
+
+model BookHandover {
+  id                     BigInt    @id @default(autoincrement())
+  nomor_surat            String    @unique @db.VarChar(100) // e.g. BAST/BUKU-BOS/2026/001
+  judul_acara            String    @default("SERAH TERIMA BUKU AJAR BOS TAHUN ANGGARAN 2026") @db.VarChar(255)
+  tahun_anggaran         Int       @default(2026)
+  tanggal_serah_terima   DateTime  @db.Date
+  
+  // Pihak Pertama (Tim Pengadaan Buku Ajar BOS)
+  pihak_pertama_nama     String    @default("Gloria Putri Ixora, S.Pd.") @db.VarChar(255)
+  pihak_pertama_jabatan  String    @default("Tim Pengadaan Buku Ajar BOS") @db.VarChar(255)
+  
+  // Pihak Kedua (Koordinator Sarpra)
+  pihak_kedua_nama       String    @default("Emanuel Suryajaya, S.Kom.") @db.VarChar(255)
+  pihak_kedua_jabatan    String    @default("Koordinator Sarpra SMA Nusaputera") @db.VarChar(255)
+  
+  // Mengetahui (Kepala Sekolah)
+  mengetahui_nama        String    @default("Nining Tri Palupi, S.Pd., M.Pd.") @db.VarChar(255)
+  mengetahui_jabatan     String    @default("Kepala SMA Nusaputera") @db.VarChar(255)
+  
+  catatan                String?   @db.Text
+  created_by             BigInt
+  created_at             DateTime? @default(now())
+  updated_at             DateTime? @updatedAt
+
+  creator                User      @relation("UserBookHandovers", fields: [created_by], references: [id], onDelete: Cascade)
+  items                  BookHandoverItem[]
+
+  @@index([created_by])
+  @@index([tahun_anggaran])
+  @@map("book_handovers")
+}
+
+model BookHandoverItem {
+  id           BigInt       @id @default(autoincrement())
+  handover_id  BigInt
+  book_id      BigInt?
+  judul_buku   String       @db.VarChar(255)
+  kelas        String       @db.VarChar(50)
+  penerbit     String       @db.VarChar(255)
+  tahun        Int
+  jumlah       Int          @default(1) // Eksemplar
+
+  handover     BookHandover @relation(fields: [handover_id], references: [id], onDelete: Cascade)
+  book         Book?        @relation(fields: [book_id], references: [id], onDelete: SetNull)
+
+  @@index([handover_id])
+  @@index([book_id])
+  @@map("book_handover_items")
 }
 
 
