@@ -1128,175 +1128,219 @@ const formalDate = computed(() => {
     </div>
 
     <!-- MODAL 3: CETAK BERITA ACARA RESMI (100% IDENTIK FORMAT FISIK) -->
-    <div
-      v-if="showPrintModal && selectedHandover"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in print:p-0 print:bg-white print:fixed print:inset-0"
-    >
-      <div class="bg-white dark:bg-slate-900 print:dark:bg-white print:text-black border border-slate-200 dark:border-slate-800 print:border-none rounded-3xl print:rounded-none max-w-2xl w-full p-6 sm:p-10 shadow-2xl relative max-h-[92vh] overflow-y-auto print:max-h-none print:overflow-visible">
-        <!-- Close & Print Bar (Hidden on print) -->
-        <div class="flex items-center justify-between pb-4 mb-6 border-b border-slate-100 dark:border-slate-800 print:hidden">
-          <div class="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-            <span>📜</span>
-            <span>Pratinjau Berita Acara Serah Terima Buku Ajar BOS</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              @click="triggerPrint"
-              class="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-extrabold text-xs shadow-md shadow-orange-600/30 flex items-center gap-1.5"
-            >
-              <span>🖨️</span>
-              <span>Cetak Berita Acara</span>
-            </button>
-            <button
-              type="button"
-              @click="showPrintModal = false"
-              class="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm"
-            >
-              ✕
-            </button>
+    <ClientOnly>
+      <Teleport to="body">
+        <div
+          v-if="showPrintModal && selectedHandover"
+          id="bast-print-modal-root"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in"
+        >
+          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-10 shadow-2xl relative max-h-[92vh] overflow-y-auto bast-modal-card">
+            <!-- Close & Print Bar (Hidden on print) -->
+            <div class="flex items-center justify-between pb-4 mb-6 border-b border-slate-100 dark:border-slate-800 no-print">
+              <div class="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <span>📜</span>
+                <span>Pratinjau Berita Acara Serah Terima Buku Ajar BOS</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  @click="triggerPrint"
+                  class="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-extrabold text-xs shadow-md shadow-orange-600/30 flex items-center gap-1.5"
+                >
+                  <span>🖨️</span>
+                  <span>Cetak Berita Acara</span>
+                </button>
+                <button
+                  type="button"
+                  @click="showPrintModal = false"
+                  class="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <!-- PRINTABLE DOCUMENT (100% SESUAI DOKUMEN FISIK REFERENSI) -->
+            <div class="print-bast-sheet text-black text-xs leading-relaxed font-serif sm:text-sm">
+              <!-- Header Center -->
+              <div class="text-center font-bold uppercase space-y-1 mb-6">
+                <div class="text-base tracking-wide">BERITA ACARA</div>
+                <div class="text-sm tracking-wide">
+                  {{ selectedHandover.judul_acara || `SERAH TERIMA BUKU AJAR BOS TAHUN ANGGARAN ${selectedHandover.tahun_anggaran || 2026}` }}
+                </div>
+              </div>
+
+              <!-- Paragraf Pembuka -->
+              <div class="text-justify indent-8 mb-4">
+                Pada hari ini <span class="font-semibold">{{ formalDate.hari }}</span> tanggal <span class="font-semibold">{{ formalDate.tanggal }}</span> bulan <span class="font-semibold">{{ formalDate.bulan }}</span> tahun <span class="font-semibold">{{ formalDate.tahun }}</span>, terjadi serah terima Buku paket yang dibeli dari anggaran BOS Tahun {{ selectedHandover.tahun_anggaran || 2026 }} sebagaimana tersebut di bawah ini :
+              </div>
+
+              <!-- Daftar Rincian Buku (Numbered List Berbutir) -->
+              <div class="pl-6 mb-5 space-y-1">
+                <div
+                  v-for="(itm, idx) in selectedHandover.items"
+                  :key="idx"
+                  class="flex items-start gap-2"
+                >
+                  <span class="w-4 shrink-0">{{ idx + 1 }}.</span>
+                  <span>
+                    {{ itm.judul_buku }} kelas {{ itm.kelas }}, Penerbit {{ itm.penerbit }} tahun {{ itm.tahun }}, jumlah {{ itm.jumlah }} eks
+                  </span>
+                </div>
+              </div>
+
+              <!-- Pihak Pertama -->
+              <div class="mb-3">
+                <div class="font-bold">Dari pihak PERTAMA</div>
+                <table class="border-collapse mt-0.5 ml-1">
+                  <tbody>
+                    <tr>
+                      <td class="w-24">Nama</td>
+                      <td class="w-4">:</td>
+                      <td class="font-bold">{{ selectedHandover.pihak_pertama_nama }}</td>
+                    </tr>
+                    <tr>
+                      <td>Jabatan</td>
+                      <td>:</td>
+                      <td>{{ selectedHandover.pihak_pertama_jabatan }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Pihak Kedua -->
+              <div class="mb-5">
+                <div class="font-bold">Kepada pihak KEDUA</div>
+                <table class="border-collapse mt-0.5 ml-1">
+                  <tbody>
+                    <tr>
+                      <td class="w-24">Nama</td>
+                      <td class="w-4">:</td>
+                      <td class="font-bold">{{ selectedHandover.pihak_kedua_nama }}</td>
+                    </tr>
+                    <tr>
+                      <td>Jabatan</td>
+                      <td>:</td>
+                      <td>{{ selectedHandover.pihak_kedua_jabatan }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Pernyataan Klausul -->
+              <div class="mb-3 text-justify">
+                Selanjutnya buku tersebut menjadi inventarisasi SMA Nusaputera
+              </div>
+
+              <!-- Penutup -->
+              <div class="mb-6 text-justify">
+                Demikian berita acara ini dibuat untuk menjadi periksa
+              </div>
+
+              <!-- Tanda Tangan -->
+              <div class="space-y-4">
+                <div class="text-right pr-6">
+                  Semarang, {{ formalDate.tanggal }} {{ formalDate.bulan }} {{ formalDate.tahun }}
+                </div>
+
+                <!-- Kolom Pihak I & Pihak II -->
+                <div class="grid grid-cols-2 gap-8 text-center">
+                  <div>
+                    <div class="font-bold">Pihak PERTAMA</div>
+                    <div class="h-16 flex items-center justify-center italic text-black/30 text-xs">
+                      ( Tanda Tangan )
+                    </div>
+                    <div class="font-bold">{{ selectedHandover.pihak_pertama_nama }}</div>
+                  </div>
+
+                  <div>
+                    <div class="font-bold">Pihak KEDUA</div>
+                    <div class="h-16 flex items-center justify-center italic text-black/30 text-xs">
+                      ( Tanda Tangan )
+                    </div>
+                    <div class="font-bold">{{ selectedHandover.pihak_kedua_nama }}</div>
+                  </div>
+                </div>
+
+                <!-- Kolom Mengetahui Kepala Sekolah -->
+                <div class="text-center pt-2">
+                  <div class="font-bold">Mengetahui,</div>
+                  <div class="font-bold">Kepala Sekolah</div>
+                  <div class="h-16 flex items-center justify-center italic text-black/30 text-xs">
+                    ( Tanda Tangan & Cap Sekolah )
+                  </div>
+                  <div class="font-bold">{{ selectedHandover.mengetahui_nama }}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-        <!-- PRINTABLE DOCUMENT (100% SESUAI DOKUMEN FISIK REFERENSI) -->
-        <div class="print-bast-sheet text-black text-xs leading-relaxed font-serif sm:text-sm">
-          <!-- Header Center -->
-          <div class="text-center font-bold uppercase space-y-1 mb-6">
-            <div class="text-base tracking-wide">BERITA ACARA</div>
-            <div class="text-sm tracking-wide">
-              {{ selectedHandover.judul_acara || `SERAH TERIMA BUKU AJAR BOS TAHUN ANGGARAN ${selectedHandover.tahun_anggaran || 2026}` }}
-            </div>
-          </div>
-
-          <!-- Paragraf Pembuka -->
-          <div class="text-justify indent-8 mb-4">
-            Pada hari ini <span class="font-semibold">{{ formalDate.hari }}</span> tanggal <span class="font-semibold">{{ formalDate.tanggal }}</span> bulan <span class="font-semibold">{{ formalDate.bulan }}</span> tahun <span class="font-semibold">{{ formalDate.tahun }}</span>, terjadi serah terima Buku paket yang dibeli dari anggaran BOS Tahun {{ selectedHandover.tahun_anggaran || 2026 }} sebagaimana tersebut di bawah ini :
-          </div>
-
-          <!-- Daftar Rincian Buku (Numbered List Berbutir) -->
-          <div class="pl-6 mb-6 space-y-1">
-            <div
-              v-for="(itm, idx) in selectedHandover.items"
-              :key="idx"
-              class="flex items-start gap-2"
-            >
-              <span class="w-4 shrink-0">{{ idx + 1 }}.</span>
-              <span>
-                {{ itm.judul_buku }} kelas {{ itm.kelas }}, Penerbit {{ itm.penerbit }} tahun {{ itm.tahun }}, jumlah {{ itm.jumlah }} eks
-              </span>
-            </div>
-          </div>
-
-          <!-- Pihak Pertama -->
-          <div class="mb-4">
-            <div class="font-bold">Dari pihak PERTAMA</div>
-            <table class="border-collapse mt-0.5 ml-1">
-              <tbody>
-                <tr>
-                  <td class="w-24">Nama</td>
-                  <td class="w-4">:</td>
-                  <td class="font-bold">{{ selectedHandover.pihak_pertama_nama }}</td>
-                </tr>
-                <tr>
-                  <td>Jabatan</td>
-                  <td>:</td>
-                  <td>{{ selectedHandover.pihak_pertama_jabatan }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Pihak Kedua -->
-          <div class="mb-6">
-            <div class="font-bold">Kepada pihak KEDUA</div>
-            <table class="border-collapse mt-0.5 ml-1">
-              <tbody>
-                <tr>
-                  <td class="w-24">Nama</td>
-                  <td class="w-4">:</td>
-                  <td class="font-bold">{{ selectedHandover.pihak_kedua_nama }}</td>
-                </tr>
-                <tr>
-                  <td>Jabatan</td>
-                  <td>:</td>
-                  <td>{{ selectedHandover.pihak_kedua_jabatan }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Pernyataan Klausul -->
-          <div class="mb-4 text-justify">
-            Selanjutnya buku tersebut menjadi inventarisasi SMA Nusaputera
-          </div>
-
-          <!-- Penutup -->
-          <div class="mb-8 text-justify">
-            Demikian berita acara ini dibuat untuk menjadi periksa
-          </div>
-
-          <!-- Tanda Tangan -->
-          <div class="space-y-6">
-            <div class="text-right pr-4">
-              Semarang, {{ formalDate.tanggal }} {{ formalDate.bulan }} {{ formalDate.tahun }}
-            </div>
-
-            <!-- Kolom Pihak I & Pihak II -->
-            <div class="grid grid-cols-2 gap-8 text-center">
-              <div>
-                <div class="font-bold">Pihak PERTAMA</div>
-                <div class="h-24 flex items-center justify-center italic text-black/30 text-xs">
-                  ( Tanda Tangan )
-                </div>
-                <div class="font-bold">{{ selectedHandover.pihak_pertama_nama }}</div>
-              </div>
-
-              <div>
-                <div class="font-bold">Pihak KEDUA</div>
-                <div class="h-24 flex items-center justify-center italic text-black/30 text-xs">
-                  ( Tanda Tangan )
-                </div>
-                <div class="font-bold">{{ selectedHandover.pihak_kedua_nama }}</div>
-              </div>
-            </div>
-
-            <!-- Kolom Mengetahui Kepala Sekolah -->
-            <div class="text-center pt-2">
-              <div class="font-bold">Mengetahui,</div>
-              <div class="font-bold">Kepala Sekolah</div>
-              <div class="h-24 flex items-center justify-center italic text-black/30 text-xs">
-                ( Tanda Tangan & Cap Sekolah )
-              </div>
-              <div class="font-bold">{{ selectedHandover.mengetahui_nama }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      </Teleport>
+    </ClientOnly>
   </div>
 </template>
 
 <style scoped>
+@page {
+  size: A4 portrait;
+  margin: 1.5cm 2cm;
+}
+
 @media print {
-  /* Sembunyikan elemen non-cetak */
-  body * {
-    visibility: hidden;
+  /* 1. Sembunyikan seluruh layout Nuxt */
+  #__nuxt {
+    display: none !important;
   }
-  .print-bast-sheet,
-  .print-bast-sheet * {
-    visibility: visible;
+
+  /* 2. Sembunyikan bar tombol non-cetak */
+  .no-print,
+  .no-print * {
+    display: none !important;
   }
+
+  /* 3. Tampilkan lembar modal cetak mulai dari sudut atas kertas */
+  #bast-print-modal-root {
+    display: block !important;
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    backdrop-filter: none !important;
+  }
+
+  .bast-modal-card {
+    display: block !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    color: #000 !important;
+    overflow: visible !important;
+  }
+
   .print-bast-sheet {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 2.5cm 2cm;
-    font-family: 'Times New Roman', Times, serif;
-    font-size: 12pt;
-    line-height: 1.6;
-    color: #000;
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 11pt !important;
+    line-height: 1.55 !important;
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  .print-bast-sheet * {
+    color: #000 !important;
   }
 }
 </style>
