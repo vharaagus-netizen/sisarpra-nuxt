@@ -383,6 +383,83 @@ html, body {
         page-break-after: avoid !important;
     }
 
+    /* 4b. Portal Print (<Teleport to="body">) untuk Pengadaan Barang & BAST Buku */
+    body:has(.print-portal-root) #__nuxt {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .print-portal-root {
+        position: static !important;
+        display: block !important;
+        visibility: visible !important;
+        inset: auto !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        overflow: visible !important;
+        z-index: auto !important;
+    }
+
+    .print-portal-card {
+        position: static !important;
+        display: block !important;
+        visibility: visible !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+    }
+
+    .print-paper-sheet {
+        display: block !important;
+        visibility: visible !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+    }
+
+    .print-paper-sheet * {
+        visibility: visible !important;
+        color: #000000 !important;
+        box-shadow: none !important;
+    }
+
+    .print-paper-sheet .print-box-clean {
+        background: transparent !important;
+        border-color: #000000 !important;
+    }
+
+    .print-paper-sheet.print-bast-sheet {
+        padding: 3mm 5mm !important;
+        font-family: 'Times New Roman', Times, serif !important;
+        font-size: 11pt !important;
+        line-height: 1.55 !important;
+    }
+
     /* 5. Pastikan gambar logo dan garis tampil tajam */
     img {
         max-width: 100% !important;
@@ -408,6 +485,6 @@ html, body {
     /* 6. Aturan Margin Kertas Resmi (1 Halaman Pas) */
     @page {
         size: A4 portrait;
-        margin: 10mm 15mm 10mm 15mm;
+        margin: 12mm 15mm 12mm 15mm;
     }
 }

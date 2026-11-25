@@ -267,7 +267,9 @@ const getLabTypeLabel = (lt) => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div>
+    <!-- Screen View UI -->
+    <div class="space-y-6 print:hidden">
     <!-- Header Area Screen View -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 print:hidden">
       <div>
@@ -1056,341 +1058,337 @@ const getLabTypeLabel = (lt) => {
         </form>
       </div>
     </div>
+    </div>
+    <!-- END Screen View UI -->
 
     <!-- MODAL 4: Detail & Lembar Pengusulan Cetak Individual -->
-    <div
-      v-if="showDetailModal && activePrintItem"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in print:p-0 print:bg-white print:fixed print:inset-0"
-    >
-      <div class="bg-white dark:bg-slate-900 print:dark:bg-white print:text-black border border-slate-200 dark:border-slate-800 print:border-none rounded-3xl print:rounded-none max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto print:max-h-none print:overflow-visible">
-        <!-- Close & Print Bar (Hidden on print) -->
-        <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 print:hidden">
-          <div class="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-            <span>📄</span>
-            <span>Lembar Formulir Pengajuan Barang</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              @click="triggerPrint"
-              class="px-3.5 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow-md shadow-orange-600/30 flex items-center gap-1.5"
-            >
-              <span>🖨️</span>
-              <span>Cetak Dokumen</span>
-            </button>
-            <button
-              type="button"
-              @click="showDetailModal = false"
-              class="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm"
-            >
-              ✕
-            </button>
+    <ClientOnly>
+      <Teleport to="body">
+        <div
+          v-if="showDetailModal && activePrintItem"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in print-portal-root"
+        >
+          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl relative max-h-[92vh] overflow-y-auto print-portal-card">
+            <!-- Close & Print Bar (Hidden on print) -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 dark:border-slate-800 no-print">
+              <div class="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <span>📄</span>
+                <span>Lembar Formulir Pengajuan Barang</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  @click="triggerPrint"
+                  class="px-3.5 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow-md shadow-orange-600/30 flex items-center gap-1.5"
+                >
+                  <span>🖨️</span>
+                  <span>Cetak Dokumen</span>
+                </button>
+                <button
+                  type="button"
+                  @click="showDetailModal = false"
+                  class="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <!-- PRINTABLE CONTENT CONTAINER (Selalu Tampil Sebagai Kertas Putih Kontras Tinggi) -->
+            <div class="print-paper-sheet bg-white text-black p-5 sm:p-7 rounded-2xl border border-slate-200 shadow-sm text-xs leading-normal">
+              <!-- Kop Surat Resmi -->
+              <div class="text-center pb-3 border-b-2 border-black flex items-center justify-between gap-4">
+                <div class="w-16 h-16 shrink-0 flex items-center justify-center">
+                  <img src="/images/logo.png" alt="Logo SMA Nusaputera" class="w-14 h-14 object-contain" />
+                </div>
+                <div class="flex-1 text-center">
+                  <div class="text-[11px] font-bold tracking-wider uppercase text-gray-700">
+                    YAYASAN PENDIDIKAN NUSAPUTERA
+                  </div>
+                  <div class="text-base font-black uppercase tracking-tight text-black">
+                    SMA NUSAPUTERA SEMARANG
+                  </div>
+                  <div class="text-[10px] text-gray-700">
+                    Jl. Ki Mangunsarkoro No.59 Semarang Tengah, Telp (024) 3542444
+                  </div>
+                  <div class="text-[9px] text-gray-600">
+                    Email: sma_nusaputera@yahoo.id / info@smanusaputera.sch.id • SISARPRA
+                  </div>
+                </div>
+                <div class="w-16 h-16 shrink-0 flex items-center justify-center border border-gray-400 text-[8px] font-semibold text-gray-600 uppercase text-center p-1 leading-tight">
+                  FORMULIR<br />PENGADAAN
+                </div>
+              </div>
+
+              <!-- Judul Dokumen -->
+              <div class="text-center my-4">
+                <h2 class="text-sm font-black uppercase tracking-wide underline underline-offset-4 text-black">
+                  SURAT USULAN PENGADAAN {{ activePrintItem.jenis_pengadaan === 'lab' ? 'LABORATORIUM' : 'SARANA PRASARANA' }}
+                </h2>
+                <div class="text-[11px] font-mono font-semibold mt-1 text-gray-800">
+                  Nomor: {{ activePrintItem.nomor_pengajuan || `PGD-${activePrintItem.id}` }}
+                </div>
+              </div>
+
+              <!-- Rincian Pengajuan -->
+              <div class="p-4 rounded-xl bg-gray-50 border border-gray-300 print-box-clean space-y-2 mb-4">
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="text-gray-600 font-semibold">Tanggal Usulan:</div>
+                  <div class="col-span-2 font-bold text-black">{{ formatDate(activePrintItem.created_at) }}</div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="text-gray-600 font-semibold">Petugas Pemohon:</div>
+                  <div class="col-span-2 font-bold text-black">{{ activePrintItem.user?.name }} ({{ activePrintItem.user?.role }})</div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="text-gray-600 font-semibold">Jenis Pengadaan:</div>
+                  <div class="col-span-2 font-bold uppercase text-black">
+                    {{ activePrintItem.jenis_pengadaan === 'lab' ? `Laboratorium (${getLabTypeLabel(activePrintItem.lab_type)})` : 'Sarana Prasarana Umum' }}
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="text-gray-600 font-semibold">Nama Barang/Alat:</div>
+                  <div class="col-span-2 font-extrabold text-sm text-black">{{ activePrintItem.nama_barang }}</div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="text-gray-600 font-semibold">Kategori / Tipe:</div>
+                  <div class="col-span-2 text-black">
+                    {{ activePrintItem.kategori }}
+                    <span v-if="activePrintItem.item_type">
+                      ({{ activePrintItem.item_type === 'bahan_habis_pakai' ? 'Bahan Habis Pakai' : 'Alat' }})
+                    </span>
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="text-gray-600 font-semibold">Jumlah Kebutuhan:</div>
+                  <div class="col-span-2 font-bold text-black">{{ activePrintItem.jumlah }} {{ activePrintItem.satuan || 'unit' }}</div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="text-gray-600 font-semibold">Estimasi Total Biaya:</div>
+                  <div class="col-span-2 font-extrabold text-black">
+                    {{ formatRupiah(activePrintItem.estimasi_biaya) }}
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="text-gray-600 font-semibold">Lokasi Penempatan:</div>
+                  <div class="col-span-2 text-black">{{ activePrintItem.lokasi_penempatan || '-' }}</div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="text-gray-600 font-semibold">Tingkat Urgensi:</div>
+                  <div class="col-span-2 font-bold uppercase text-black">{{ activePrintItem.urgensi }}</div>
+                </div>
+                <div v-if="activePrintItem.spesifikasi" class="grid grid-cols-3 gap-2">
+                  <div class="text-gray-600 font-semibold">Spesifikasi Teknis:</div>
+                  <div class="col-span-2 text-black">{{ activePrintItem.spesifikasi }}</div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="text-gray-600 font-semibold">Alasan Kebutuhan:</div>
+                  <div class="col-span-2 text-black">{{ activePrintItem.alasan_kebutuhan }}</div>
+                </div>
+              </div>
+
+              <!-- Status & Catatan Persetujuan -->
+              <div class="p-3 rounded-xl bg-white border border-gray-300 print-box-clean mb-5">
+                <div class="font-bold mb-1 flex items-center justify-between text-black">
+                  <span>STATUS TINJAUAN ADMIN:</span>
+                  <span class="uppercase font-black tracking-wide">{{ getStatusBadge(activePrintItem.status).label.toUpperCase() }}</span>
+                </div>
+                <div class="text-[11px] text-gray-800">
+                  Catatan Admin: {{ activePrintItem.catatan_admin || 'Belum ada catatan khusus.' }}
+                </div>
+                <div v-if="activePrintItem.reviewer" class="text-[10px] text-gray-600 mt-1">
+                  Ditinjau oleh: {{ activePrintItem.reviewer.name }} pada {{ formatDate(activePrintItem.reviewed_at) }}
+                </div>
+              </div>
+
+              <!-- 3 Kolom Tanda Tangan Resmi -->
+              <div class="pt-4 border-t border-gray-300 print-box-clean">
+                <div class="text-right text-[10px] text-gray-700 mb-3">
+                  Semarang, {{ formatDate(new Date()) }}
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center text-[11px]">
+                  <!-- Pemohon -->
+                  <div>
+                    <div class="font-semibold text-gray-800">Pemohon / Pengaju</div>
+                    <div class="h-14 flex items-center justify-center italic text-gray-400 text-[10px]">
+                      (Tanda Tangan)
+                    </div>
+                    <div class="font-bold underline text-black">{{ activePrintItem.user?.name || 'Petugas' }}</div>
+                    <div class="text-[9px] text-gray-600">Petugas Sarpra / Laboran</div>
+                  </div>
+
+                  <!-- Mengetahui Waka Sarpras -->
+                  <div>
+                    <div class="font-semibold text-gray-800">Mengetahui</div>
+                    <div class="h-14 flex items-center justify-center italic text-gray-400 text-[10px]">
+                      (Tanda Tangan)
+                    </div>
+                    <div class="font-bold underline text-black">Waka Sarana Prasarana</div>
+                    <div class="text-[9px] text-gray-600">SMA Nusaputera Semarang</div>
+                  </div>
+
+                  <!-- Menyetujui Kepala Sekolah / Super Admin -->
+                  <div>
+                    <div class="font-semibold text-gray-800">Menyetujui</div>
+                    <div class="h-14 flex items-center justify-center italic text-gray-400 text-[10px]">
+                      (Tanda Tangan)
+                    </div>
+                    <div class="font-bold underline text-black">{{ activePrintItem.reviewer?.name || 'Kepala Sekolah' }}</div>
+                    <div class="text-[9px] text-gray-600">Kepala SMA Nusaputera</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-        <!-- PRINTABLE CONTENT CONTAINER -->
-        <div class="mt-4 print:mt-0 text-slate-800 dark:text-slate-200 print:text-black text-xs leading-normal">
-          <!-- Kop Surat Resmi -->
-          <div class="text-center pb-3 border-b-2 border-black flex items-center justify-between gap-4">
-            <div class="w-16 h-16 shrink-0 flex items-center justify-center">
-              <img src="/images/logo.png" alt="Logo SMA" class="w-14 h-14 object-contain" />
-            </div>
-            <div class="flex-1 text-center">
-              <div class="text-[11px] font-bold tracking-wider uppercase text-slate-600 print:text-black">
-                YAYASAN PENDIDIKAN NUSAPUTERA
-              </div>
-              <div class="text-base font-black uppercase tracking-tight text-slate-900 print:text-black">
-                SMA NUSAPUTERA SEMARANG
-              </div>
-              <div class="text-[10px] text-slate-500 print:text-black">
-                Jl. Sompok No. 13, Lamper Lor, Kec. Semarang Selatan, Kota Semarang, Jawa Tengah 50249
-              </div>
-              <div class="text-[9px] text-slate-400 print:text-black">
-                Website: nusaputera.sch.id • Sistem Informasi Sarana & Prasarana (SISARPRA)
-              </div>
-            </div>
-            <div class="w-16 h-16 shrink-0 flex items-center justify-center">
-              <img src="/images/logo.png" alt="Logo" class="w-14 h-14 object-contain opacity-0 print:hidden" />
-            </div>
-          </div>
-
-          <!-- Judul Dokumen -->
-          <div class="text-center my-4">
-            <h2 class="text-sm font-black uppercase tracking-wide underline underline-offset-4 text-slate-900 print:text-black">
-              SURAT USULAN PENGADAAN {{ activePrintItem.jenis_pengadaan === 'lab' ? 'LABORATORIUM' : 'SARANA PRASARANA' }}
-            </h2>
-            <div class="text-[11px] font-mono mt-1 text-slate-600 print:text-black">
-              Nomor: {{ activePrintItem.nomor_pengajuan || `PGD-${activePrintItem.id}` }}
-            </div>
-          </div>
-
-          <!-- Rincian Pengajuan -->
-          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 print:bg-transparent border border-slate-200 dark:border-slate-700 print:border-black space-y-2 mb-4">
-            <div class="grid grid-cols-3 gap-2">
-              <div class="text-slate-500 print:text-black font-semibold">Tanggal Usulan:</div>
-              <div class="col-span-2 font-bold">{{ formatDate(activePrintItem.created_at) }}</div>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <div class="text-slate-500 print:text-black font-semibold">Petugas Pemohon:</div>
-              <div class="col-span-2 font-bold">{{ activePrintItem.user?.name }} ({{ activePrintItem.user?.role }})</div>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <div class="text-slate-500 print:text-black font-semibold">Jenis Pengadaan:</div>
-              <div class="col-span-2 font-bold uppercase">
-                {{ activePrintItem.jenis_pengadaan === 'lab' ? `Laboratorium (${getLabTypeLabel(activePrintItem.lab_type)})` : 'Sarana Prasarana Umum' }}
-              </div>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <div class="text-slate-500 print:text-black font-semibold">Nama Barang/Alat:</div>
-              <div class="col-span-2 font-extrabold text-sm">{{ activePrintItem.nama_barang }}</div>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <div class="text-slate-500 print:text-black font-semibold">Kategori / Tipe:</div>
-              <div class="col-span-2">{{ activePrintItem.kategori }} {{ activePrintItem.item_type ? `(${activePrintItem.item_type})` : '' }}</div>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <div class="text-slate-500 print:text-black font-semibold">Jumlah Kebutuhan:</div>
-              <div class="col-span-2 font-bold">{{ activePrintItem.jumlah }} {{ activePrintItem.satuan || 'unit' }}</div>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <div class="text-slate-500 print:text-black font-semibold">Estimasi Total Biaya:</div>
-              <div class="col-span-2 font-extrabold text-slate-900 print:text-black">
-                {{ formatRupiah(activePrintItem.estimasi_biaya) }}
-              </div>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <div class="text-slate-500 print:text-black font-semibold">Lokasi Penempatan:</div>
-              <div class="col-span-2">{{ activePrintItem.lokasi_penempatan || '-' }}</div>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <div class="text-slate-500 print:text-black font-semibold">Tingkat Urgensi:</div>
-              <div class="col-span-2 font-bold uppercase">{{ activePrintItem.urgensi }}</div>
-            </div>
-            <div v-if="activePrintItem.spesifikasi" class="grid grid-cols-3 gap-2">
-              <div class="text-slate-500 print:text-black font-semibold">Spesifikasi Teknis:</div>
-              <div class="col-span-2">{{ activePrintItem.spesifikasi }}</div>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <div class="text-slate-500 print:text-black font-semibold">Alasan Kebutuhan:</div>
-              <div class="col-span-2">{{ activePrintItem.alasan_kebutuhan }}</div>
-            </div>
-          </div>
-
-          <!-- Status & Catatan Persetujuan -->
-          <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 print:border-black mb-6">
-            <div class="font-bold mb-1 flex items-center justify-between">
-              <span>STATUS TINJAUAN ADMIN:</span>
-              <span class="uppercase font-black">{{ activePrintItem.status }}</span>
-            </div>
-            <div class="text-[11px] text-slate-600 print:text-black">
-              Catatan Admin: {{ activePrintItem.catatan_admin || 'Belum ada catatan khusus.' }}
-            </div>
-            <div v-if="activePrintItem.reviewer" class="text-[10px] text-slate-400 print:text-black mt-1">
-              Ditinjau oleh: {{ activePrintItem.reviewer.name }} pada {{ formatDate(activePrintItem.reviewed_at) }}
-            </div>
-          </div>
-
-          <!-- 3 Kolom Tanda Tangan Resmi -->
-          <div class="pt-4 border-t border-slate-200 dark:border-slate-700 print:border-black">
-            <div class="text-right text-[10px] text-slate-500 print:text-black mb-4">
-              Semarang, {{ formatDate(new Date()) }}
-            </div>
-            <div class="grid grid-cols-3 gap-2 text-center text-[11px]">
-              <!-- Pemohon -->
-              <div>
-                <div class="font-semibold text-slate-600 print:text-black">Pemohon / Pengaju</div>
-                <div class="h-16 flex items-center justify-center italic text-slate-400 print:text-black/50 text-[10px]">
-                  (Tanda Tangan)
-                </div>
-                <div class="font-bold underline">{{ activePrintItem.user?.name || 'Petugas' }}</div>
-                <div class="text-[9px] text-slate-500 print:text-black">Petugas Sarpra / Laboran</div>
-              </div>
-
-              <!-- Mengetahui Waka Sarpras -->
-              <div>
-                <div class="font-semibold text-slate-600 print:text-black">Mengetahui</div>
-                <div class="h-16 flex items-center justify-center italic text-slate-400 print:text-black/50 text-[10px]">
-                  (Tanda Tangan)
-                </div>
-                <div class="font-bold underline">Waka Sarana Prasarana</div>
-                <div class="text-[9px] text-slate-500 print:text-black">SMA Nusaputera Semarang</div>
-              </div>
-
-              <!-- Menyetujui Kepala Sekolah / Super Admin -->
-              <div>
-                <div class="font-semibold text-slate-600 print:text-black">Menyetujui</div>
-                <div class="h-16 flex items-center justify-center italic text-slate-400 print:text-black/50 text-[10px]">
-                  (Tanda Tangan)
-                </div>
-                <div class="font-bold underline">{{ activePrintItem.reviewer?.name || 'Kepala Sekolah' }}</div>
-                <div class="text-[9px] text-slate-500 print:text-black">Kepala SMA Nusaputera</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      </Teleport>
+    </ClientOnly>
 
     <!-- MODAL 5: Cetak Rekapitulasi Laporan (Bulanan/Tahunan) -->
-    <div
-      v-if="showPrintRekapModal"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in print:p-0 print:bg-white print:fixed print:inset-0"
-    >
-      <div class="bg-white dark:bg-slate-900 print:dark:bg-white print:text-black border border-slate-200 dark:border-slate-800 print:border-none rounded-3xl print:rounded-none max-w-4xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto print:max-h-none print:overflow-visible">
-        <!-- Close & Print Bar -->
-        <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 print:hidden">
-          <div class="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-            <span>🖨️</span>
-            <span>Rekapitulasi Dokumen Laporan Pengadaan</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              @click="triggerPrint"
-              class="px-4 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow-md shadow-orange-600/30 flex items-center gap-1.5"
-            >
-              <span>🖨️</span>
-              <span>Cetak Laporan (Print)</span>
-            </button>
-            <button
-              type="button"
-              @click="showPrintRekapModal = false"
-              class="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm"
-            >
-              ✕
-            </button>
+    <ClientOnly>
+      <Teleport to="body">
+        <div
+          v-if="showPrintRekapModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in print-portal-root"
+        >
+          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-4xl w-full p-5 sm:p-7 shadow-2xl relative max-h-[92vh] overflow-y-auto print-portal-card">
+            <!-- Close & Print Bar -->
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 dark:border-slate-800 no-print">
+              <div class="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <span>🖨️</span>
+                <span>Rekapitulasi Dokumen Laporan Pengadaan</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  @click="triggerPrint"
+                  class="px-4 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow-md shadow-orange-600/30 flex items-center gap-1.5"
+                >
+                  <span>🖨️</span>
+                  <span>Cetak Laporan (Print)</span>
+                </button>
+                <button
+                  type="button"
+                  @click="showPrintRekapModal = false"
+                  class="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <!-- REKAPITULASI PRINTABLE CONTAINER -->
+            <div class="print-paper-sheet bg-white text-black p-5 sm:p-7 rounded-2xl border border-slate-200 shadow-sm text-xs">
+              <!-- Kop Surat Resmi -->
+              <div class="text-center pb-3 border-b-2 border-black flex items-center justify-between gap-4">
+                <div class="w-16 h-16 shrink-0 flex items-center justify-center">
+                  <img src="/images/logo.png" alt="Logo SMA Nusaputera" class="w-14 h-14 object-contain" />
+                </div>
+                <div class="flex-1 text-center">
+                  <div class="text-[11px] font-bold tracking-wider uppercase text-gray-700">
+                    YAYASAN PENDIDIKAN NUSAPUTERA
+                  </div>
+                  <div class="text-base font-black uppercase tracking-tight text-black">
+                    SMA NUSAPUTERA SEMARANG
+                  </div>
+                  <div class="text-[10px] text-gray-700">
+                    Jl. Ki Mangunsarkoro No.59 Semarang Tengah, Telp (024) 3542444
+                  </div>
+                  <div class="text-[9px] font-bold text-gray-700 uppercase mt-0.5">
+                    LAPORAN REKAPITULASI USULAN PENGADAAN SARANA PRASARANA &amp; LABORATORIUM
+                  </div>
+                </div>
+                <div class="w-16 h-16 shrink-0 flex items-center justify-center border border-gray-400 text-[8px] font-semibold text-gray-600 uppercase text-center p-1 leading-tight">
+                  REKAPITULASI<br />PENGADAAN
+                </div>
+              </div>
+
+              <!-- Periode & Filter Info -->
+              <div class="my-4 flex items-center justify-between text-[11px] text-black">
+                <div>
+                  <strong>Kategori:</strong> {{ activeTab === 'sarpra' ? 'Sarana Prasarana Umum' : 'Laboratorium' }}
+                </div>
+                <div>
+                  <strong>Periode Cetak:</strong> {{ filterMonth ? `Bulan ${filterMonth}` : 'Semua Periode' }}
+                </div>
+                <div>
+                  <strong>Total Usulan:</strong> {{ procurements.length }} item
+                </div>
+              </div>
+
+              <!-- Tabel Rekapitulasi -->
+              <table class="w-full text-left border-collapse border border-black text-[10px] text-black mb-4">
+                <thead>
+                  <tr class="bg-gray-100 text-black font-bold">
+                    <th class="border border-black p-1.5 text-center w-8">No</th>
+                    <th class="border border-black p-1.5">No. Pengajuan</th>
+                    <th class="border border-black p-1.5">Nama Barang / Alat</th>
+                    <th class="border border-black p-1.5">Kategori / Lab</th>
+                    <th class="border border-black p-1.5 text-center">Jml</th>
+                    <th class="border border-black p-1.5">Lokasi</th>
+                    <th class="border border-black p-1.5 text-right">Estimasi Biaya</th>
+                    <th class="border border-black p-1.5 text-center">Urgensi</th>
+                    <th class="border border-black p-1.5 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(p, idx) in procurements" :key="p.id">
+                    <td class="border border-black p-1.5 text-center">{{ idx + 1 }}</td>
+                    <td class="border border-black p-1.5 font-mono">{{ p.nomor_pengajuan || `PGD-${p.id}` }}</td>
+                    <td class="border border-black p-1.5 font-bold">{{ p.nama_barang }}</td>
+                    <td class="border border-black p-1.5">
+                      {{ p.jenis_pengadaan === 'lab' ? getLabTypeLabel(p.lab_type) : p.kategori }}
+                    </td>
+                    <td class="border border-black p-1.5 text-center">{{ p.jumlah }} {{ p.satuan || 'unit' }}</td>
+                    <td class="border border-black p-1.5">{{ p.lokasi_penempatan || '-' }}</td>
+                    <td class="border border-black p-1.5 text-right font-mono font-bold">{{ formatRupiah(p.estimasi_biaya) }}</td>
+                    <td class="border border-black p-1.5 text-center uppercase">{{ p.urgensi }}</td>
+                    <td class="border border-black p-1.5 text-center uppercase font-bold">{{ getStatusBadge(p.status).label }}</td>
+                  </tr>
+
+                  <tr v-if="procurements.length === 0">
+                    <td colspan="9" class="border border-black p-3 text-center italic text-gray-600">
+                      Tidak ada data usulan pengadaan pada filter ini.
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr class="bg-gray-100 font-bold text-black">
+                    <td colspan="6" class="border border-black p-1.5 text-right uppercase">
+                      Total Estimasi Anggaran:
+                    </td>
+                    <td class="border border-black p-1.5 text-right font-mono">
+                      {{ formatRupiah(procurements.reduce((acc, p) => acc + (p.estimasi_biaya ? Number(p.estimasi_biaya) : 0), 0)) }}
+                    </td>
+                    <td colspan="2" class="border border-black p-1.5"></td>
+                  </tr>
+                </tfoot>
+              </table>
+
+              <!-- 2 Kolom Tanda Tangan Rekap -->
+              <div class="pt-4 grid grid-cols-2 gap-4 text-center text-[11px]">
+                <div>
+                  <div class="text-gray-700">Petugas Bagian Sarana &amp; Prasarana</div>
+                  <div class="h-14 flex items-center justify-center italic text-gray-400 text-[10px]">
+                    (Tanda Tangan)
+                  </div>
+                  <div class="font-bold underline text-black">{{ user?.name || 'Petugas Sarpras' }}</div>
+                  <div class="text-[9px] text-gray-600">NIP/NIY: _________________</div>
+                </div>
+
+                <div>
+                  <div class="text-gray-700">Kepala SMA Nusaputera Semarang</div>
+                  <div class="h-14 flex items-center justify-center italic text-gray-400 text-[10px]">
+                    (Tanda Tangan &amp; Cap Sekolah)
+                  </div>
+                  <div class="font-bold underline text-black">Kepala Sekolah SMA Nusaputera</div>
+                  <div class="text-[9px] text-gray-600">NIP/NIY: _________________</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-        <!-- REKAPITULASI PRINTABLE CONTAINER -->
-        <div class="mt-4 print:mt-0 text-slate-800 dark:text-slate-200 print:text-black text-xs">
-          <!-- Kop Surat Resmi -->
-          <div class="text-center pb-3 border-b-2 border-black flex items-center justify-between gap-4">
-            <div class="w-16 h-16 shrink-0 flex items-center justify-center">
-              <img src="/images/logo.png" alt="Logo SMA" class="w-14 h-14 object-contain" />
-            </div>
-            <div class="flex-1 text-center">
-              <div class="text-[11px] font-bold tracking-wider uppercase text-slate-600 print:text-black">
-                YAYASAN PENDIDIKAN NUSAPUTERA
-              </div>
-              <div class="text-base font-black uppercase tracking-tight text-slate-900 print:text-black">
-                SMA NUSAPUTERA SEMARANG
-              </div>
-              <div class="text-[10px] text-slate-500 print:text-black">
-                Jl. Sompok No. 13, Lamper Lor, Kec. Semarang Selatan, Kota Semarang, Jawa Tengah 50249
-              </div>
-              <div class="text-[9px] text-slate-400 print:text-black">
-                LAPORAN REKAPITULASI USULAN PENGADAAN SARANA PRASARANA & LABORATORIUM
-              </div>
-            </div>
-            <div class="w-16 h-16 shrink-0 flex items-center justify-center">
-              <img src="/images/logo.png" alt="Logo" class="w-14 h-14 object-contain opacity-0 print:hidden" />
-            </div>
-          </div>
-
-          <!-- Periode & Filter Info -->
-          <div class="my-4 flex items-center justify-between text-[11px]">
-            <div>
-              <strong>Kategori:</strong> {{ activeTab === 'sarpra' ? 'Sarana Prasarana Umum' : 'Laboratorium' }}
-            </div>
-            <div>
-              <strong>Periode Cetak:</strong> {{ filterMonth ? `Bulan ${filterMonth}` : 'Semua Periode' }}
-            </div>
-            <div>
-              <strong>Total Usulan:</strong> {{ procurements.length }} item
-            </div>
-          </div>
-
-          <!-- Tabel Rekapitulasi -->
-          <table class="w-full text-left border-collapse border border-black text-[10px] mb-4">
-            <thead>
-              <tr class="bg-slate-100 print:bg-slate-200 text-black">
-                <th class="border border-black p-1.5 text-center w-8">No</th>
-                <th class="border border-black p-1.5">No. Pengajuan</th>
-                <th class="border border-black p-1.5">Nama Barang / Alat</th>
-                <th class="border border-black p-1.5">Kategori / Lab</th>
-                <th class="border border-black p-1.5 text-center">Jml</th>
-                <th class="border border-black p-1.5">Lokasi</th>
-                <th class="border border-black p-1.5 text-right">Estimasi Biaya</th>
-                <th class="border border-black p-1.5 text-center">Urgensi</th>
-                <th class="border border-black p-1.5 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(p, idx) in procurements" :key="p.id">
-                <td class="border border-black p-1.5 text-center">{{ idx + 1 }}</td>
-                <td class="border border-black p-1.5 font-mono">{{ p.nomor_pengajuan || `PGD-${p.id}` }}</td>
-                <td class="border border-black p-1.5 font-bold">{{ p.nama_barang }}</td>
-                <td class="border border-black p-1.5">
-                  {{ p.jenis_pengadaan === 'lab' ? getLabTypeLabel(p.lab_type) : p.kategori }}
-                </td>
-                <td class="border border-black p-1.5 text-center">{{ p.jumlah }} {{ p.satuan || 'unit' }}</td>
-                <td class="border border-black p-1.5">{{ p.lokasi_penempatan || '-' }}</td>
-                <td class="border border-black p-1.5 text-right font-mono font-bold">{{ formatRupiah(p.estimasi_biaya) }}</td>
-                <td class="border border-black p-1.5 text-center uppercase">{{ p.urgensi }}</td>
-                <td class="border border-black p-1.5 text-center uppercase font-bold">{{ p.status }}</td>
-              </tr>
-
-              <tr v-if="procurements.length === 0">
-                <td colspan="9" class="border border-black p-3 text-center italic">
-                  Tidak ada data usulan pengadaan pada filter ini.
-                </td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr class="bg-slate-100 print:bg-slate-200 font-bold text-black">
-                <td colspan="6" class="border border-black p-1.5 text-right uppercase">
-                  Total Estimasi Anggaran:
-                </td>
-                <td class="border border-black p-1.5 text-right font-mono">
-                  {{ formatRupiah(procurements.reduce((acc, p) => acc + (p.estimasi_biaya ? Number(p.estimasi_biaya) : 0), 0)) }}
-                </td>
-                <td colspan="2" class="border border-black p-1.5"></td>
-              </tr>
-            </tfoot>
-          </table>
-
-          <!-- 2 Kolom Tanda Tangan Rekap -->
-          <div class="pt-4 grid grid-cols-2 gap-4 text-center text-[11px]">
-            <div>
-              <div class="text-slate-600 print:text-black">Petugas Bagian Sarana & Prasarana</div>
-              <div class="h-16 flex items-center justify-center italic text-slate-400 print:text-black/50 text-[10px]">
-                (Tanda Tangan)
-              </div>
-              <div class="font-bold underline">{{ user?.name || 'Petugas Sarpras' }}</div>
-              <div class="text-[9px] text-slate-500 print:text-black">NIP/NIY: _________________</div>
-            </div>
-
-            <div>
-              <div class="text-slate-600 print:text-black">Kepala SMA Nusaputera Semarang</div>
-              <div class="h-16 flex items-center justify-center italic text-slate-400 print:text-black/50 text-[10px]">
-                (Tanda Tangan & Cap Sekolah)
-              </div>
-              <div class="font-bold underline">Kepala Sekolah SMA Nusaputera</div>
-              <div class="text-[9px] text-slate-500 print:text-black">NIP/NIY: _________________</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      </Teleport>
+    </ClientOnly>
   </div>
 </template>
-
-<style scoped>
-@media print {
-  /* Hilangkan header, navbar, dan elemen di luar modal */
-  body * {
-    visibility: hidden;
-  }
-  .print\:fixed,
-  .print\:fixed * {
-    visibility: visible;
-  }
-  .print\:fixed {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-  }
-}
-</style>

@@ -241,7 +241,9 @@ const formalDate = computed(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div>
+    <!-- Screen View UI -->
+    <div class="space-y-6 print:hidden">
     <!-- Header Area Screen View -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 print:hidden">
       <div>
@@ -1126,6 +1128,8 @@ const formalDate = computed(() => {
         </form>
       </div>
     </div>
+    </div>
+    <!-- END Screen View UI -->
 
     <!-- MODAL 3: CETAK BERITA ACARA RESMI (100% IDENTIK FORMAT FISIK) -->
     <ClientOnly>
@@ -1133,11 +1137,11 @@ const formalDate = computed(() => {
         <div
           v-if="showPrintModal && selectedHandover"
           id="bast-print-modal-root"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in print-portal-root"
         >
-          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-10 shadow-2xl relative max-h-[92vh] overflow-y-auto bast-modal-card">
+          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-5 sm:p-8 shadow-2xl relative max-h-[92vh] overflow-y-auto print-portal-card bast-modal-card">
             <!-- Close & Print Bar (Hidden on print) -->
-            <div class="flex items-center justify-between pb-4 mb-6 border-b border-slate-100 dark:border-slate-800 no-print">
+            <div class="flex items-center justify-between pb-4 mb-5 border-b border-slate-100 dark:border-slate-800 no-print">
               <div class="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <span>📜</span>
                 <span>Pratinjau Berita Acara Serah Terima Buku Ajar BOS</span>
@@ -1161,8 +1165,8 @@ const formalDate = computed(() => {
               </div>
             </div>
 
-            <!-- PRINTABLE DOCUMENT (100% SESUAI DOKUMEN FISIK REFERENSI) -->
-            <div class="print-bast-sheet text-black text-xs leading-relaxed font-serif sm:text-sm">
+            <!-- PRINTABLE DOCUMENT (100% SESUAI DOKUMEN FISIK REFERENSI, KERTAS PUTIH KONTRAS TINGGI) -->
+            <div class="print-paper-sheet print-bast-sheet bg-white text-black p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm text-xs leading-relaxed font-serif sm:text-sm">
               <!-- Header Center -->
               <div class="text-center font-bold uppercase space-y-1 mb-6">
                 <div class="text-base tracking-wide">BERITA ACARA</div>
@@ -1280,67 +1284,3 @@ const formalDate = computed(() => {
     </ClientOnly>
   </div>
 </template>
-
-<style scoped>
-@page {
-  size: A4 portrait;
-  margin: 1.5cm 2cm;
-}
-
-@media print {
-  /* 1. Sembunyikan seluruh layout Nuxt */
-  #__nuxt {
-    display: none !important;
-  }
-
-  /* 2. Sembunyikan bar tombol non-cetak */
-  .no-print,
-  .no-print * {
-    display: none !important;
-  }
-
-  /* 3. Tampilkan lembar modal cetak mulai dari sudut atas kertas */
-  #bast-print-modal-root {
-    display: block !important;
-    position: static !important;
-    background: transparent !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    width: 100% !important;
-    height: auto !important;
-    overflow: visible !important;
-    backdrop-filter: none !important;
-  }
-
-  .bast-modal-card {
-    display: block !important;
-    border: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    max-height: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    background: transparent !important;
-    color: #000 !important;
-    overflow: visible !important;
-  }
-
-  .print-bast-sheet {
-    display: block !important;
-    width: 100% !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    font-family: 'Times New Roman', Times, serif !important;
-    font-size: 11pt !important;
-    line-height: 1.55 !important;
-    color: #000 !important;
-    background: #fff !important;
-  }
-
-  .print-bast-sheet * {
-    color: #000 !important;
-  }
-}
-</style>
