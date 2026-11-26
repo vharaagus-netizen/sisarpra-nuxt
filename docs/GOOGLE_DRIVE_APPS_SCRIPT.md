@@ -8,38 +8,46 @@ Fitur ini memungkinkan **Siswa, Guru, Petugas, dan Admin** mengunggah foto/PDF l
 
 1. Login menggunakan akun Google yang ingin dijadikan tempat arsip (disarankan akun Google Sarpra / sekolah).
 2. Buka **[https://script.google.com](https://script.google.com)** lalu klik **New Project** (*Proyek baru*).
-3. Hapus seluruh isi default di editor `Code.gs`, lalu **salin & tempel** kode lengkap berikut:
+3. **Pilih semua isi default di editor `Code.gs` (`Ctrl + A`) lalu hapus (`Backspace`)** sampai benar-benar kosong.
+4. **Salin & tempel** seluruh kode berikut ke `Code.gs`:
+
+> **Tentang Secret Token:** Google Apps Script **tidak** memberikan token otomatis — Anda sendiri yang menentukan kata sandinya di baris `SECRET_TOKEN` di bawah ini, lalu menyamakannya dengan `GDRIVE_UPLOAD_SECRET` di `.env` / Vercel.
 
 ```javascript
-const ROOT_FOLDER_NAME = 'SISARPRA_DOKUMENTASI';
-// GANTI token ini dengan kata sandi acak yang panjang, lalu samakan dengan GDRIVE_UPLOAD_SECRET di .env / Vercel
-const SECRET_TOKEN = 'sisarpra_nusaputera_rahasia_2026';
+var ROOT_FOLDER_NAME = 'SISARPRA_DOKUMENTASI';
+var SECRET_TOKEN = 'sisarpra_nusaputera_rahasia_2026';
+
+function doGet() {
+  return jsonOut({
+    ok: true,
+    service: 'SISARPRA Drive Uploader Ready'
+  });
+}
 
 function doPost(e) {
   try {
-    const payload = JSON.parse(e.postData.contents);
+    var payload = JSON.parse(e.postData.contents);
 
     if (!payload.secret || payload.secret !== SECRET_TOKEN) {
       return jsonOut({ success: false, message: 'Unauthorized secret token' });
     }
 
-    const rootFolder = getOrCreateFolder(DriveApp.getRootFolder(), ROOT_FOLDER_NAME);
-    const subName = String(payload.folder || 'Umum').replace(/[^a-zA-Z0-9_-]/g, '');
-    const targetFolder = getOrCreateFolder(rootFolder, subName || 'Umum');
+    var rootFolder = getOrCreateFolder(DriveApp.getRootFolder(), ROOT_FOLDER_NAME);
+    var subName = String(payload.folder || 'Umum').replace(/[^a-zA-Z0-9_-]/g, '');
+    var targetFolder = getOrCreateFolder(rootFolder, subName || 'Umum');
 
-    const bytes = Utilities.base64Decode(payload.base64);
-    const blob = Utilities.newBlob(bytes, payload.mimeType, payload.filename);
-    const file = targetFolder.createFile(blob);
+    var bytes = Utilities.base64Decode(payload.base64);
+    var blob = Utilities.newBlob(bytes, payload.mimeType, payload.filename);
+    var file = targetFolder.createFile(blob);
 
-    // Catat info pengunggah di deskripsi file Drive (opsional untuk audit)
     if (payload.uploadedBy) {
       file.setDescription('Diunggah melalui SISARPRA oleh: ' + payload.uploadedBy);
     }
 
-    // Kunci keamanan: hanya bisa dilihat via link (VIEW), tidak bisa edit/hapus isi folder
+    // Kunci keamanan: publik hanya dapat melihat (VIEW), tidak bisa edit/hapus isi Drive
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
-    const fileId = file.getId();
+    var fileId = file.getId();
     return jsonOut({
       success: true,
       fileId: fileId,
@@ -52,7 +60,7 @@ function doPost(e) {
 }
 
 function getOrCreateFolder(parent, name) {
-  const iter = parent.getFoldersByName(name);
+  var iter = parent.getFoldersByName(name);
   return iter.hasNext() ? iter.next() : parent.createFolder(name);
 }
 
@@ -63,19 +71,32 @@ function jsonOut(obj) {
 }
 ```
 
+5. Tekan **Save** (`Ctrl + S`).
+
 ---
 
-## Langkah 2: Deploy sebagai Web App
+## Langkah 2: Deploy (atau Update Versi) Web App
 
-1. Klik tombol **Deploy** (kanan atas) → **New deployment**.
-2. Pada ikon roda gigi (*Select type*), pilih **Web app**.
-3. Isi pengaturan berikut **dengan tepat**:
+### A. Jika Deploy Baru Pertama Kali:
+1. Klik **Deploy** (kanan atas) → **New deployment**.
+2. Klik ikon roda gigi (*Select type*) → pilih **Web app**.
+3. Isi:
    * **Description:** `SISARPRA Drive Uploader`
    * **Execute as:** **Me** *(akun pemilik Google Drive)*
    * **Who has access:** **Anyone** *(aman karena URL dirahasiakan di backend Nuxt dan dilindungi `SECRET_TOKEN`)*
-4. Klik **Deploy**. Jika Google memunculkan pop-up **Authorize access**:
-   * Pilih akun Google Drive Sarpra → klik **Advanced / Lanjutan** → **Go to Untitled project (unsafe)** → **Allow / Izinkan**.
+4. Klik **Deploy**. Jika muncul pop-up **Authorize access**, pilih akun Google Anda → **Advanced** → **Go to ... (unsafe)** → **Allow**.
 5. Salin **Web app URL** (berakhiran `/exec`).
+
+### B. Jika Anda Mengedit `Code.gs` Setelah Sudah Pernah Deploy:
+> ⚠️ **Penting:** Menyimpan kode (`Ctrl + S`) saja **belum memperbarui** URL `/exec`! Anda harus menerbitkan versi baru:
+1. Klik **Deploy** → **Manage deployments** (*Kelola deployment*).
+2. Klik ikon **Pensil (Edit)** di kanan atas dialog.
+3. Pada kolom **Version**, pilih **New version** (*Versi baru*).
+4. Klik **Deploy**. *(URL `/exec` Anda tetap sama, tidak berubah).*
+
+### Tes Cepat di Browser:
+Buka **Web app URL** (`/exec`) Anda langsung di tab browser baru. Jika berhasil, akan tampil JSON:
+`{"ok":true,"service":"SISARPRA Drive Uploader Ready"}`.
 
 ---
 
@@ -88,7 +109,7 @@ GDRIVE_WEBHOOK_URL="https://script.google.com/macros/s/AKfycbx.../exec"
 GDRIVE_UPLOAD_SECRET="sisarpra_nusaputera_rahasia_2026"
 ```
 
-> **Penting:** Pastikan nilai `GDRIVE_UPLOAD_SECRET` sama persis dengan `SECRET_TOKEN` di `Code.gs`, lalu re-deploy project di Vercel (atau restart `npm run dev` di lokal) agar variabel terbaca.
+> **Catatan:** Jika Anda mengganti `SECRET_TOKEN` di `Code.gs`, wajib samakan nilai `GDRIVE_UPLOAD_SECRET`, lalu redeploy project di Vercel (atau restart `npm run dev` di lokal) agar variabel terbaca.
 
 ---
 
