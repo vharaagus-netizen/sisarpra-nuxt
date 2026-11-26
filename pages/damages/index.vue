@@ -585,6 +585,15 @@ const formatCurrency = (amount) => {
                 </span>
               </div>
             </div>
+            <!-- Action Controls -->
+            <div v-if="item.foto_sebelum || item.foto_sesudah" class="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold">
+              <span v-if="item.foto_sebelum" class="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                📷 Foto Sebelum
+              </span>
+              <span v-if="item.foto_sesudah" class="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                ✅ Bukti Sesudah
+              </span>
+            </div>
           </div>
 
           <!-- Action Controls -->
@@ -818,15 +827,12 @@ const formatCurrency = (amount) => {
             ></textarea>
           </div>
 
-          <div>
-            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">URL / Link Foto Bukti Kerusakan (Opsional)</label>
-            <input
-              type="text"
-              v-model="createForm.foto_sebelum"
-              placeholder="https://... atau path gambar bukti"
-              class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[11px]"
-            />
-          </div>
+          <DriveUploadField
+            v-model="createForm.foto_sebelum"
+            folder="Kerusakan"
+            label="Foto Bukti Kerusakan (Opsional)"
+            hint="Foto diunggah langsung ke Drive Sekolah (hanya lihat, aman, 0 KB di DB). Guru & Siswa khusus foto JPG/PNG/WebP."
+          />
 
           <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
             <button
@@ -930,6 +936,25 @@ const formatCurrency = (amount) => {
             </h4>
             <div class="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 text-emerald-900 dark:text-emerald-200 leading-relaxed">
               {{ activeReport.tindakan_perbaikan }}
+            </div>
+          </div>
+
+          <!-- Dokumentasi Foto Before / After (Google Drive Preview) -->
+          <div v-if="activeReport.foto_sebelum || activeReport.foto_sesudah" class="space-y-2">
+            <h4 class="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px]">
+              Dokumentasi Foto &amp; Bukti Perbaikan
+            </h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <DrivePreviewCard
+                v-if="activeReport.foto_sebelum"
+                :url="activeReport.foto_sebelum"
+                title="Kondisi Rusak (Sebelum)"
+              />
+              <DrivePreviewCard
+                v-if="activeReport.foto_sesudah"
+                :url="activeReport.foto_sesudah"
+                title="Hasil Perbaikan / Nota (Sesudah)"
+              />
             </div>
           </div>
 
@@ -1081,6 +1106,14 @@ const formatCurrency = (amount) => {
               class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
             />
           </div>
+
+          <DriveUploadField
+            v-model="actionForm.foto_sesudah"
+            folder="Perbaikan"
+            :allow-pdf="true"
+            label="Foto / Bukti Selesai Perbaikan atau Nota (Opsional)"
+            hint="Staf/Petugas dapat mengunggah foto kondisi sesudah diperbaiki maupun PDF kuitansi perbaikan."
+          />
 
           <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
             <button

@@ -182,6 +182,7 @@ model ProcurementRequest {
   urgensi           String    @default("sedang") @db.VarChar(50) // rendah, sedang, tinggi, mendesak
   alasan_kebutuhan  String    @db.Text
   lokasi_penempatan String?   @db.VarChar(255)
+  link_dokumentasi  String?   @db.Text
   status            String    @default("menunggu_review") @db.VarChar(50) // menunggu_review, disetujui, dianggarkan, ditolak, terealisasi
   catatan_admin     String?   @db.Text
   reviewed_by       BigInt?
@@ -371,6 +372,7 @@ model Book {
   lokasi_rak      String?   @db.VarChar(255)
   kondisi         String    @default("baik") @db.VarChar(50)
   keterangan      String?   @db.Text
+  foto            String?   @db.Text
   created_at      DateTime? @default(now())
   updated_at      DateTime? @updatedAt
 
@@ -402,6 +404,7 @@ model BookHandover {
   mengetahui_jabatan     String    @default("Kepala SMA Nusaputera") @db.VarChar(255)
   
   catatan                String?   @db.Text
+  file_bast_signed       String?   @db.Text
   created_by             BigInt
   created_at             DateTime? @default(now())
   updated_at             DateTime? @updatedAt

@@ -1,5 +1,6 @@
 import { prisma } from '~/server/utils/prisma'
 import { requireStaff } from '~/server/utils/auth'
+import { normalizeSafeUrl } from '~/server/utils/gdrive'
 
 export default defineEventHandler(async (event) => {
   const staff = await requireStaff(event)
@@ -17,7 +18,8 @@ export default defineEventHandler(async (event) => {
     estimasi_biaya,
     urgensi = 'sedang',
     alasan_kebutuhan,
-    lokasi_penempatan
+    lokasi_penempatan,
+    link_dokumentasi
   } = body || {}
 
   if (!nama_barang || !String(nama_barang).trim()) {
@@ -61,6 +63,7 @@ export default defineEventHandler(async (event) => {
       urgensi: ['rendah', 'sedang', 'tinggi', 'mendesak'].includes(urgensi) ? urgensi : 'sedang',
       alasan_kebutuhan: String(alasan_kebutuhan).trim(),
       lokasi_penempatan: lokasi_penempatan ? String(lokasi_penempatan).trim() : null,
+      link_dokumentasi: normalizeSafeUrl(link_dokumentasi),
       status: 'menunggu_review'
     },
     include: {

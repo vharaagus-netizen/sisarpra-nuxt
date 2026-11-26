@@ -1,5 +1,6 @@
 import { prisma } from '~/server/utils/prisma'
 import { requireStaff } from '~/server/utils/auth'
+import { normalizeSafeUrl } from '~/server/utils/gdrive'
 
 export default defineEventHandler(async (event) => {
   await requireStaff(event)
@@ -20,7 +21,8 @@ export default defineEventHandler(async (event) => {
     stok_tersedia,
     lokasi_rak,
     kondisi = 'baik',
-    keterangan
+    keterangan,
+    foto
   } = body || {}
 
   if (!judul || !String(judul).trim()) {
@@ -54,7 +56,8 @@ export default defineEventHandler(async (event) => {
         stok_tersedia: cleanAvStok,
         lokasi_rak: lokasi_rak ? String(lokasi_rak).trim() : null,
         kondisi: kondisi || 'baik',
-        keterangan: keterangan ? String(keterangan).trim() : null
+        keterangan: keterangan ? String(keterangan).trim() : null,
+        ...(foto !== undefined ? { foto: normalizeSafeUrl(foto) } : {})
       }
     })
 
@@ -96,7 +99,8 @@ export default defineEventHandler(async (event) => {
         stok_dipinjam: 0,
         lokasi_rak: lokasi_rak ? String(lokasi_rak).trim() : 'Perpustakaan SMA',
         kondisi: kondisi || 'baik',
-        keterangan: keterangan ? String(keterangan).trim() : null
+        keterangan: keterangan ? String(keterangan).trim() : null,
+        foto: normalizeSafeUrl(foto)
       }
     })
 

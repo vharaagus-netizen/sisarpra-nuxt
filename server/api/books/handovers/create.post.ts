@@ -1,5 +1,6 @@
 import { prisma } from '~/server/utils/prisma'
 import { requireStaff } from '~/server/utils/auth'
+import { normalizeSafeUrl } from '~/server/utils/gdrive'
 
 export default defineEventHandler(async (event) => {
   const staff = await requireStaff(event)
@@ -16,6 +17,7 @@ export default defineEventHandler(async (event) => {
     mengetahui_nama = 'Nining Tri Palupi, S.Pd., M.Pd.',
     mengetahui_jabatan = 'Kepala SMA Nusaputera',
     catatan,
+    file_bast_signed,
     items = [],
     auto_sync_inventory = true
   } = body || {}
@@ -50,6 +52,7 @@ export default defineEventHandler(async (event) => {
       mengetahui_nama: String(mengetahui_nama).trim(),
       mengetahui_jabatan: String(mengetahui_jabatan).trim(),
       catatan: catatan ? String(catatan).trim() : null,
+      file_bast_signed: normalizeSafeUrl(file_bast_signed),
       created_by: BigInt(staff.id)
     }
   })

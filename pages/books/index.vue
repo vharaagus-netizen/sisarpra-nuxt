@@ -53,7 +53,8 @@ const bookForm = reactive({
   stok_tersedia: 45,
   lokasi_rak: 'Perpustakaan SMA',
   kondisi: 'baik',
-  keterangan: ''
+  keterangan: '',
+  foto: ''
 })
 
 // Modal BAST Form State
@@ -69,6 +70,7 @@ const handoverForm = reactive({
   mengetahui_nama: 'Nining Tri Palupi, S.Pd., M.Pd.',
   mengetahui_jabatan: 'Kepala SMA Nusaputera',
   catatan: '',
+  file_bast_signed: '',
   auto_sync_inventory: true,
   items: [
     { judul_buku: 'Prakarya dan Kewirausahaan', kelas: 'X', penerbit: 'Erlangga', tahun: 2023, jumlah: 45 },
@@ -80,6 +82,16 @@ const handoverForm = reactive({
 // Modal Cetak BAST State
 const showPrintModal = ref(false)
 const selectedHandover = ref(null)
+
+// Modal Lampiran Scan BAST Bertanda Tangan
+const showAttachBastModal = ref(false)
+const attachTargetHandover = ref(null)
+const attachFileUrl = ref('')
+const attachingBast = ref(false)
+
+// Modal Preview Foto Sampul Buku
+const showBookPhotoModal = ref(false)
+const bookPhotoPreview = reactive({ title: '', url: '' })
 
 // Action Handlers: Book
 const openAddBook = () => {
@@ -99,6 +111,7 @@ const openAddBook = () => {
   bookForm.lokasi_rak = 'Perpustakaan SMA'
   bookForm.kondisi = 'baik'
   bookForm.keterangan = ''
+  bookForm.foto = ''
   showBookModal.value = true
 }
 
@@ -119,6 +132,7 @@ const openEditBook = (b) => {
   bookForm.lokasi_rak = b.lokasi_rak || ''
   bookForm.kondisi = b.kondisi || 'baik'
   bookForm.keterangan = b.keterangan || ''
+  bookForm.foto = b.foto || ''
   showBookModal.value = true
 }
 
@@ -195,6 +209,7 @@ const submitHandover = async () => {
     })
 
     showHandoverModal.value = false
+    handoverForm.file_bast_signed = ''
     await fetchHandovers()
     await fetchBooks()
 
@@ -206,6 +221,39 @@ const submitHandover = async () => {
   } catch (err) {
     alert(err?.data?.statusMessage || 'Gagal membuat Berita Acara.')
   }
+}
+
+const openAttachBastModal = (h) => {
+  attachTargetHandover.value = h
+  attachFileUrl.value = h.file_bast_signed || ''
+  showAttachBastModal.value = true
+}
+
+const submitAttachBast = async () => {
+  if (!attachTargetHandover.value) return
+  attachingBast.value = true
+  try {
+    const res = await $fetch('/api/books/handovers/attach', {
+      method: 'POST',
+      body: {
+        id: attachTargetHandover.value.id,
+        file_bast_signed: attachFileUrl.value
+      }
+    })
+    showAttachBastModal.value = false
+    await fetchHandovers()
+    alert(res.message || 'Lampiran BAST berhasil diperbarui.')
+  } catch (err) {
+    alert(err?.data?.statusMessage || 'Gagal menyimpan lampiran scan BAST.')
+  } finally {
+    attachingBast.value = false
+  }
+}
+
+const openBookPhotoPreview = (b) => {
+  bookPhotoPreview.title = `${b.judul} (Kelas ${b.kelas})`
+  bookPhotoPreview.url = b.foto
+  showBookPhotoModal.value = true
 }
 
 const deleteHandover = async (h) => {
@@ -470,8 +518,17 @@ const formalDate = computed(() => {
               >
                 <!-- Kode & Judul -->
                 <td class="py-3 px-4">
-                  <div class="font-bold text-slate-900 dark:text-white text-sm">
-                    {{ b.judul }}
+                  <div class="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5 flex-wrap">
+                    <span>{{ b.judul }}</span>
+                    <button
+                      v-if="b.foto"
+                      type="button"
+                      @click="openBookPhotoPreview(b)"
+                      class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors"
+                      title="Lihat Foto Sampul Buku"
+                    >
+                      📷 Foto
+                    </button>
                   </div>
                   <div class="text-[10px] font-mono text-slate-400 mt-0.5">
                     {{ b.kode_buku }} • {{ b.mata_pelajaran || 'Mata Pelajaran Wajib' }}
@@ -618,6 +675,16 @@ const formalDate = computed(() => {
                   <div class="text-[10px] text-slate-500 font-medium mt-0.5 max-w-xs truncate" :title="h.judul_acara">
                     {{ h.judul_acara }}
                   </div>
+                  <div v-if="h.file_bast_signed" class="mt-1">
+                    <a
+                      :href="h.file_bast_signed"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:underline"
+                    >
+                      ✅ Arsip Scan Bertanda Tangan ↗
+                    </a>
+                  </div>
                 </td>
 
                 <!-- Tgl Serah Terima -->
@@ -666,7 +733,22 @@ const formalDate = computed(() => {
 
                 <!-- Aksi -->
                 <td class="py-3.5 px-4 text-right whitespace-nowrap">
-                  <div class="flex items-center justify-end gap-2">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <button
+                      type="button"
+                      @click="openAttachBastModal(h)"
+                      :class="[
+                        'px-2.5 py-1.5 rounded-xl font-bold text-xs border transition-all flex items-center gap-1',
+                        h.file_bast_signed
+                          ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+                      ]"
+                      title="Upload / Lihat Scan PDF atau Foto BAST Bertanda Tangan Basah"
+                    >
+                      <span>📎</span>
+                      <span>{{ h.file_bast_signed ? 'Arsip' : 'Upload Scan' }}</span>
+                    </button>
+
                     <button
                       type="button"
                       @click="openPrint(h)"
@@ -927,6 +1009,14 @@ const formalDate = computed(() => {
             </div>
           </div>
 
+          <DriveUploadField
+            v-model="handoverForm.file_bast_signed"
+            folder="BAST"
+            :allow-pdf="true"
+            label="Lampiran Scan PDF / Foto BAST Bertanda Tangan atau Nota (Opsional)"
+            hint="Boleh dikosongkan dulu saat membuat BAST, lalu dilampirkan lewat tombol Upload Scan setelah ditandatangani & dicap."
+          />
+
           <!-- Checkbox Auto-Sync to Inventory -->
           <div class="p-3 rounded-xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/40 flex items-start gap-2.5">
             <input
@@ -1110,6 +1200,14 @@ const formalDate = computed(() => {
             </div>
           </div>
 
+          <DriveUploadField
+            v-model="bookForm.foto"
+            folder="Buku"
+            :allow-pdf="true"
+            label="Foto Sampul / Rak Buku atau Dokumen (Opsional)"
+            hint="Disimpan ke Google Drive Sekolah (0 KB di database)."
+          />
+
           <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
             <button
               type="button"
@@ -1147,6 +1245,16 @@ const formalDate = computed(() => {
                 <span>Pratinjau Berita Acara Serah Terima Buku Ajar BOS</span>
               </div>
               <div class="flex items-center gap-2">
+                <a
+                  v-if="selectedHandover.file_bast_signed"
+                  :href="selectedHandover.file_bast_signed"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold text-xs flex items-center gap-1 hover:bg-emerald-100 transition-colors"
+                >
+                  <span>📎</span>
+                  <span>Lihat Scan Arsip</span>
+                </a>
                 <button
                   type="button"
                   @click="triggerPrint"
@@ -1282,5 +1390,82 @@ const formalDate = computed(() => {
         </div>
       </Teleport>
     </ClientOnly>
+
+    <!-- MODAL 4: UPLOAD / LIHAT ARSIP SCAN BAST BERTANDA TANGAN -->
+    <div
+      v-if="showAttachBastModal && attachTargetHandover"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in print:hidden"
+    >
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative max-h-[92vh] overflow-y-auto">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+          <div>
+            <h3 class="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <span>📎</span>
+              <span>Arsip Scan Berita Acara (Bertanda Tangan)</span>
+            </h3>
+            <p class="text-xs font-mono text-orange-600 dark:text-orange-400 mt-0.5">
+              {{ attachTargetHandover.nomor_surat }}
+            </p>
+          </div>
+          <button
+            type="button"
+            @click="showAttachBastModal = false"
+            class="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+          >
+            ✕
+          </button>
+        </div>
+
+        <form @submit.prevent="submitAttachBast" class="space-y-4 text-xs">
+          <DriveUploadField
+            v-model="attachFileUrl"
+            folder="BAST"
+            :allow-pdf="true"
+            label="File Scan PDF / Foto BAST Bertanda Tangan & Cap Sekolah"
+            hint="Staf/Petugas dapat mengunggah PDF scan maupun foto hasil tanda tangan basah ke Google Drive Sekolah."
+          />
+
+          <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              @click="showAttachBastModal = false"
+              class="px-4 py-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-white"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              :disabled="attachingBast"
+              class="px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold shadow-md shadow-orange-600/30 disabled:opacity-50"
+            >
+              {{ attachingBast ? 'Menyimpan...' : 'Simpan Tautan Arsip' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL 5: PREVIEW FOTO SAMPUL BUKU -->
+    <div
+      v-if="showBookPhotoModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in print:hidden"
+      @click.self="showBookPhotoModal = false"
+    >
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-5 shadow-2xl space-y-3">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+          <div class="font-bold text-sm text-slate-900 dark:text-white truncate pr-3">
+            📚 {{ bookPhotoPreview.title }}
+          </div>
+          <button
+            type="button"
+            @click="showBookPhotoModal = false"
+            class="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+          >
+            ✕
+          </button>
+        </div>
+        <DrivePreviewCard :url="bookPhotoPreview.url" :title="bookPhotoPreview.title" />
+      </div>
+    </div>
   </div>
 </template>

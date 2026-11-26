@@ -1,5 +1,6 @@
 import { prisma } from '~/server/utils/prisma'
 import { requireUser } from '~/server/utils/auth'
+import { normalizeSafeUrl } from '~/server/utils/gdrive'
 
 export default defineEventHandler(async (event) => {
   const user = await requireUser(event)
@@ -42,7 +43,7 @@ export default defineEventHandler(async (event) => {
       kategori,
       tingkat_urgensi,
       status: 'menunggu',
-      foto_sebelum: foto_sebelum ? String(foto_sebelum).trim() : null,
+      foto_sebelum: normalizeSafeUrl(foto_sebelum),
       logs: {
         create: {
           user_id: BigInt(user.id),

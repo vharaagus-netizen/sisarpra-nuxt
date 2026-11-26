@@ -53,7 +53,8 @@ const sarpraForm = reactive({
   estimasi_biaya: '',
   urgensi: 'sedang',
   alasan_kebutuhan: '',
-  lokasi_penempatan: ''
+  lokasi_penempatan: '',
+  link_dokumentasi: ''
 })
 
 const sarpraCategories = [
@@ -79,7 +80,8 @@ const labForm = reactive({
   estimasi_biaya: '',
   urgensi: 'sedang',
   alasan_kebutuhan: '',
-  lokasi_penempatan: ''
+  lokasi_penempatan: '',
+  link_dokumentasi: ''
 })
 
 // Modal Review Admin
@@ -87,7 +89,8 @@ const showReviewModal = ref(false)
 const selectedProcurement = ref(null)
 const reviewForm = reactive({
   status: 'disetujui',
-  catatan_admin: ''
+  catatan_admin: '',
+  link_dokumentasi: ''
 })
 
 // Modal Detail & Print Individual
@@ -116,7 +119,8 @@ const submitSarpra = async () => {
         estimasi_biaya: sarpraForm.estimasi_biaya ? Number(sarpraForm.estimasi_biaya) : null,
         urgensi: sarpraForm.urgensi,
         alasan_kebutuhan: sarpraForm.alasan_kebutuhan,
-        lokasi_penempatan: sarpraForm.lokasi_penempatan
+        lokasi_penempatan: sarpraForm.lokasi_penempatan,
+        link_dokumentasi: sarpraForm.link_dokumentasi
       }
     })
     showSarpraModal.value = false
@@ -128,6 +132,7 @@ const submitSarpra = async () => {
     sarpraForm.urgensi = 'sedang'
     sarpraForm.alasan_kebutuhan = ''
     sarpraForm.lokasi_penempatan = ''
+    sarpraForm.link_dokumentasi = ''
 
     await fetchProcurements()
     alert(res.message || 'Usulan pengadaan sarana berhasil diajukan!')
@@ -156,7 +161,8 @@ const submitLab = async () => {
         estimasi_biaya: labForm.estimasi_biaya ? Number(labForm.estimasi_biaya) : null,
         urgensi: labForm.urgensi,
         alasan_kebutuhan: labForm.alasan_kebutuhan,
-        lokasi_penempatan: labForm.lokasi_penempatan
+        lokasi_penempatan: labForm.lokasi_penempatan,
+        link_dokumentasi: labForm.link_dokumentasi
       }
     })
     showLabModal.value = false
@@ -169,6 +175,7 @@ const submitLab = async () => {
     labForm.urgensi = 'sedang'
     labForm.alasan_kebutuhan = ''
     labForm.lokasi_penempatan = ''
+    labForm.link_dokumentasi = ''
 
     await fetchProcurements()
     alert(res.message || 'Usulan pengadaan lab berhasil diajukan!')
@@ -181,6 +188,7 @@ const openReview = (p) => {
   selectedProcurement.value = p
   reviewForm.status = p.status === 'menunggu_review' ? 'disetujui' : p.status
   reviewForm.catatan_admin = p.catatan_admin || ''
+  reviewForm.link_dokumentasi = p.link_dokumentasi || ''
   showReviewModal.value = true
 }
 
@@ -192,7 +200,8 @@ const submitReview = async () => {
       body: {
         id: selectedProcurement.value.id,
         status: reviewForm.status,
-        catatan_admin: reviewForm.catatan_admin
+        catatan_admin: reviewForm.catatan_admin,
+        link_dokumentasi: reviewForm.link_dokumentasi
       }
     })
     showReviewModal.value = false
@@ -277,7 +286,7 @@ const getLabTypeLabel = (lt) => {
           <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
             Staff Only • Petugas & Admin
           </span>
-          <span class="text-xs text-slate-400">• Bebas File Foto</span>
+          <span class="text-xs text-slate-400">• Dokumentasi Google Drive (0 KB di DB)</span>
         </div>
         <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
           Pengadaan Barang (Sarpra & Lab)
@@ -574,6 +583,18 @@ const getLabTypeLabel = (lt) => {
               <!-- Aksi -->
               <td class="py-3 px-4 text-right whitespace-nowrap">
                 <div class="flex items-center justify-end gap-1.5">
+                  <!-- Tautan Lampiran Drive (jika ada) -->
+                  <a
+                    v-if="p.link_dokumentasi"
+                    :href="p.link_dokumentasi"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
+                    title="Buka Lampiran Foto / Dokumen di Google Drive"
+                  >
+                    📎
+                  </a>
+
                   <!-- Detail & Cetak Lembar Individual -->
                   <button
                     type="button"
@@ -626,7 +647,7 @@ const getLabTypeLabel = (lt) => {
               <span>Ajukan Pengadaan Sarana & Prasarana</span>
             </h3>
             <p class="text-xs text-slate-500 dark:text-slate-400">
-              Formulir usulan sarana umum sekolah (tanpa unggah file/foto).
+              Formulir usulan sarana umum sekolah (lampiran tersimpan aman di Google Drive).
             </p>
           </div>
           <button
@@ -768,6 +789,14 @@ const getLabTypeLabel = (lt) => {
               class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none"
             ></textarea>
           </div>
+
+          <DriveUploadField
+            v-model="sarpraForm.link_dokumentasi"
+            folder="Pengadaan"
+            :allow-pdf="true"
+            label="Lampiran Foto Kondisi / Penawaran / Brosur (Opsional)"
+            hint="Staf dapat mengunggah foto barang atau PDF penawaran ke Google Drive Sekolah (0 KB di database)."
+          />
 
           <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
             <button
@@ -951,6 +980,14 @@ const getLabTypeLabel = (lt) => {
             ></textarea>
           </div>
 
+          <DriveUploadField
+            v-model="labForm.link_dokumentasi"
+            folder="Pengadaan"
+            :allow-pdf="true"
+            label="Lampiran Foto / PDF Spesifikasi atau Penawaran (Opsional)"
+            hint="Staf dapat mengunggah foto atau dokumen PDF penawaran/MSDS ke Google Drive Sekolah."
+          />
+
           <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
             <button
               type="button"
@@ -975,7 +1012,7 @@ const getLabTypeLabel = (lt) => {
       v-if="showReviewModal && selectedProcurement"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in print:hidden"
     >
-      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative max-h-[92vh] overflow-y-auto">
         <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h3 class="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
@@ -1023,6 +1060,14 @@ const getLabTypeLabel = (lt) => {
               class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none"
             ></textarea>
           </div>
+
+          <DriveUploadField
+            v-model="reviewForm.link_dokumentasi"
+            folder="Pengadaan"
+            :allow-pdf="true"
+            label="Lampiran Bukti Realisasi / Nota / Foto Barang (Opsional)"
+            hint="Jika terealisasi, foto ini otomatis ikut ditautkan ke Master Barang / Inventaris Lab."
+          />
 
           <!-- Info Otomatis Masuk Inventaris saat Terealisasi -->
           <div
@@ -1238,6 +1283,14 @@ const getLabTypeLabel = (lt) => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <!-- Lampiran Dokumentasi Drive (Hanya Tampil di Layar Modal, Tidak Ikut Tercetak) -->
+            <div v-if="activePrintItem.link_dokumentasi" class="mt-4 no-print">
+              <DrivePreviewCard
+                :url="activePrintItem.link_dokumentasi"
+                title="Lampiran Dokumentasi / Nota / Foto Pengadaan"
+              />
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { prisma } from '~/server/utils/prisma'
 import { requireStaff } from '~/server/utils/auth'
+import { normalizeSafeUrl } from '~/server/utils/gdrive'
 
 export default defineEventHandler(async (event) => {
   const user = await requireStaff(event)
@@ -63,7 +64,7 @@ export default defineEventHandler(async (event) => {
   }
 
   if (foto_sesudah !== undefined) {
-    updateData.foto_sesudah = foto_sesudah ? String(foto_sesudah).trim() : null
+    updateData.foto_sesudah = normalizeSafeUrl(foto_sesudah)
   }
 
   if (statusBaru === 'selesai') {

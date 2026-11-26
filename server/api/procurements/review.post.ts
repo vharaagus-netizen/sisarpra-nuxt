@@ -1,10 +1,11 @@
 import { prisma } from '~/server/utils/prisma'
 import { requireAdmin } from '~/server/utils/auth'
+import { normalizeSafeUrl } from '~/server/utils/gdrive'
 
 export default defineEventHandler(async (event) => {
   const admin = await requireAdmin(event)
   const body = await readBody(event)
-  const { id, status, catatan_admin } = body || {}
+  const { id, status, catatan_admin, link_dokumentasi } = body || {}
 
   if (!id || !status) {
     throw createError({ statusCode: 422, statusMessage: 'ID dan status persetujuan wajib diisi.' })
@@ -22,6 +23,11 @@ export default defineEventHandler(async (event) => {
   if (!existing) {
     throw createError({ statusCode: 404, statusMessage: 'Data pengadaan tidak ditemukan.' })
   }
+
+  const finalDocUrl = link_dokumentasi !== undefined
+    ? normalizeSafeUrl(link_dokumentasi)
+    : existing.link_dokumentasi
+  const safeFotoShort = finalDocUrl && finalDocUrl.length <= 255 ? finalDocUrl : undefined
 
   let createdInventoryInfo: { type: string; code: string; name: string } | null = null
 
@@ -58,7 +64,8 @@ export default defineEventHandler(async (event) => {
           total_stok: Math.max(1, existing.jumlah),
           stok_tersedia: Math.max(1, existing.jumlah),
           kondisi: 'baik',
-          lokasi_penyimpanan: existing.lokasi_penempatan || 'Ruang Sarpras'
+          lokasi_penyimpanan: existing.lokasi_penempatan || 'Ruang Sarpras',
+          foto: safeFotoShort
         }
       })
       createdInventoryInfo = { type: 'sarpra', code: newItem.kode_barang, name: newItem.nama_barang }
@@ -93,7 +100,8 @@ export default defineEventHandler(async (event) => {
           kondisi: 'baik',
           lokasi_penyimpanan: existing.lokasi_penempatan || 'Laboratorium',
           spesifikasi_khusus: existing.spesifikasi,
-          keterangan: `Dari usulan pengadaan nomor: ${existing.nomor_pengajuan || existing.id}`
+          keterangan: `Dari usulan pengadaan nomor: ${existing.nomor_pengajuan || existing.id}`,
+          foto: safeFotoShort
         }
       })
       createdInventoryInfo = { type: 'lab', code: newLabItem.kode_item, name: newLabItem.nama_item }
@@ -105,6 +113,7 @@ export default defineEventHandler(async (event) => {
     data: {
       status,
       catatan_admin: catatan_admin ? String(catatan_admin).trim() : null,
+      ...(link_dokumentasi !== undefined ? { link_dokumentasi: finalDocUrl } : {}),
       reviewed_by: BigInt(admin.id),
       reviewed_at: new Date()
     },

@@ -117,6 +117,8 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     jwtSecret: process.env.JWT_SECRET || 'sisarpra_default_secret_key_2026',
+    gdriveWebhookUrl: process.env.GDRIVE_WEBHOOK_URL || '',
+    gdriveUploadSecret: process.env.GDRIVE_UPLOAD_SECRET || '',
     public: {
       appName: process.env.NUXT_PUBLIC_APP_NAME || 'SISARPRA SMA NUSAPUTERA',
       schoolName: process.env.NUXT_PUBLIC_SCHOOL_NAME || 'SMA NUSAPUTERA SEMARANG'
