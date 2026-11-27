@@ -4,6 +4,7 @@ import { normalizeSafeUrl } from '~/server/utils/gdrive'
 import { toUtcDate } from '~/server/utils/date'
 import {
   DISPOSAL_METHODS,
+  DISPOSAL_TX_OPTIONS,
   generateDisposalNumber,
   resolveAndValidateDisposalItems,
   deductStockForDisposal
@@ -64,10 +65,13 @@ export default defineEventHandler(async (event) => {
   const tahunAnggaran = tanggalUtc.getUTCFullYear() || new Date().getFullYear()
   const staffId = BigInt(staff.id)
 
-  const result = await prisma.$transaction(async (tx) => {
-    const resolvedItems = await resolveAndValidateDisposalItems(tx, items)
-    const nomorSurat = await generateDisposalNumber(tx, tahunAnggaran)
+  // Read-only validation & numbering run outside transaction to avoid TiDB network timeout
+  const [resolvedItems, nomorSurat] = await Promise.all([
+    resolveAndValidateDisposalItems(prisma, items),
+    generateDisposalNumber(prisma, tahunAnggaran)
+  ])
 
+  const createdRecord = await prisma.$transaction(async (tx) => {
     const created = await tx.disposalRecord.create({
       data: {
         nomor_surat: nomorSurat,
@@ -95,32 +99,35 @@ export default defineEventHandler(async (event) => {
         items: {
           create: resolvedItems
         }
+      },
+      include: {
+        items: true
       }
     })
 
     let deductedInventories = 0
     if (wantsExecuteNow) {
-      deductedInventories = await deductStockForDisposal(tx, created.id, nomorSurat, staffId)
+      deductedInventories = await deductStockForDisposal(tx, created.id, nomorSurat, staffId, created)
     }
 
-    const fullRecord = await tx.disposalRecord.findUnique({
-      where: { id: created.id },
-      include: {
-        creator: { select: { id: true, name: true, role: true } },
-        approver: { select: { id: true, name: true, role: true } },
-        items: true
-      }
-    })
+    return { id: created.id, deductedInventories }
+  }, DISPOSAL_TX_OPTIONS)
 
-    return { fullRecord, deductedInventories, nomorSurat }
+  const fullRecord = await prisma.disposalRecord.findUnique({
+    where: { id: createdRecord.id },
+    include: {
+      creator: { select: { id: true, name: true, role: true } },
+      approver: { select: { id: true, name: true, role: true } },
+      items: true
+    }
   })
 
   return {
     success: true,
     message: wantsExecuteNow
-      ? `Pemusnahan barang (${result.nomorSurat}) berhasil dicatat & dieksekusi! Stok inventaris terkait otomatis disesuaikan.`
-      : `Pengajuan pemusnahan (${result.nomorSurat}) berhasil dibuat dan menunggu persetujuan Admin.`,
-    disposal: result.fullRecord,
-    deductedInventories: result.deductedInventories
+      ? `Pemusnahan barang (${nomorSurat}) berhasil dicatat & dieksekusi! Stok inventaris terkait otomatis disesuaikan.`
+      : `Pengajuan pemusnahan (${nomorSurat}) berhasil dibuat dan menunggu persetujuan Admin.`,
+    disposal: fullRecord,
+    deductedInventories: createdRecord.deductedInventories
   }
 })

@@ -3,6 +3,7 @@ import { requireAdmin } from '~/server/utils/auth'
 import { normalizeSafeUrl } from '~/server/utils/gdrive'
 import {
   DISPOSAL_STATUSES,
+  DISPOSAL_TX_OPTIONS,
   parseBigIntId,
   deductStockForDisposal
 } from '~/server/utils/disposals'
@@ -38,9 +39,10 @@ export default defineEventHandler(async (event) => {
   const disposalId = parseBigIntId(id, 'ID Pemusnahan')
   const adminId = BigInt(admin.id)
 
-  const result = await prisma.$transaction(async (tx) => {
+  const txResult = await prisma.$transaction(async (tx) => {
     const existing = await tx.disposalRecord.findUnique({
-      where: { id: disposalId }
+      where: { id: disposalId },
+      include: { items: true }
     })
 
     if (!existing) {
@@ -86,34 +88,34 @@ export default defineEventHandler(async (event) => {
 
     let deductedInventories = 0
     if (targetStatus === 'selesai' && !existing.stok_terpotong) {
-      deductedInventories = await deductStockForDisposal(tx, disposalId, existing.nomor_surat, adminId)
+      deductedInventories = await deductStockForDisposal(tx, disposalId, existing.nomor_surat, adminId, existing)
     }
 
-    const updated = await tx.disposalRecord.findUnique({
-      where: { id: disposalId },
-      include: {
-        creator: { select: { id: true, name: true, role: true } },
-        approver: { select: { id: true, name: true, role: true } },
-        items: true
-      }
-    })
+    return { deductedInventories, nomorSurat: existing.nomor_surat }
+  }, DISPOSAL_TX_OPTIONS)
 
-    return { updated, deductedInventories, nomorSurat: existing.nomor_surat }
+  const updated = await prisma.disposalRecord.findUnique({
+    where: { id: disposalId },
+    include: {
+      creator: { select: { id: true, name: true, role: true } },
+      approver: { select: { id: true, name: true, role: true } },
+      items: true
+    }
   })
 
-  let message = `Status Berita Acara ${result.nomorSurat} diperbarui menjadi "${targetStatus}".`
+  let message = `Status Berita Acara ${txResult.nomorSurat} diperbarui menjadi "${targetStatus}".`
   if (targetStatus === 'disetujui') {
-    message = `Pengajuan ${result.nomorSurat} disetujui dan siap dimusnahkan (stok belum dipotong sampai eksekusi selesai).`
+    message = `Pengajuan ${txResult.nomorSurat} disetujui dan siap dimusnahkan (stok belum dipotong sampai eksekusi selesai).`
   } else if (targetStatus === 'selesai') {
-    message = `Pemusnahan ${result.nomorSurat} selesai dieksekusi! Stok inventaris terkait otomatis disesuaikan.`
+    message = `Pemusnahan ${txResult.nomorSurat} selesai dieksekusi! Stok inventaris terkait otomatis disesuaikan.`
   } else if (targetStatus === 'ditolak') {
-    message = `Pengajuan pemusnahan ${result.nomorSurat} ditolak.`
+    message = `Pengajuan pemusnahan ${txResult.nomorSurat} ditolak.`
   }
 
   return {
     success: true,
     message,
-    disposal: result.updated,
-    deductedInventories: result.deductedInventories
+    disposal: updated,
+    deductedInventories: txResult.deductedInventories
   }
 })

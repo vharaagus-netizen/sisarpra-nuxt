@@ -1,5 +1,5 @@
 import { createError } from 'h3'
-import type { Prisma } from '@prisma/client'
+import type { Prisma, PrismaClient } from '@prisma/client'
 
 export const DISPOSAL_SOURCES = ['sarpra', 'lab', 'buku', 'manual'] as const
 export const DISPOSAL_METHODS = [
@@ -27,6 +27,13 @@ export const DISPOSAL_CONDITIONS = [
 export type DisposalSource = (typeof DISPOSAL_SOURCES)[number]
 export type DisposalMethod = (typeof DISPOSAL_METHODS)[number]
 export type DisposalStatus = (typeof DISPOSAL_STATUSES)[number]
+
+export const DISPOSAL_TX_OPTIONS = {
+  maxWait: 10000,
+  timeout: 25000
+} as const
+
+type DbClient = PrismaClient | Prisma.TransactionClient
 
 /**
  * Safely parse a numeric/string ID into BigInt, throwing 422 on invalid input.
@@ -126,25 +133,20 @@ export function buildDisposalWhere(query: Record<string, any>): Prisma.DisposalR
  * Generate a unique sequential document number: BAP/SARPRA/YYYY/0001
  */
 export async function generateDisposalNumber(
-  tx: Prisma.TransactionClient,
+  db: DbClient,
   year: number
 ): Promise<string> {
-  const existingCount = await tx.disposalRecord.count({
-    where: { tahun_anggaran: year }
+  const existing = await db.disposalRecord.findMany({
+    where: { tahun_anggaran: year },
+    select: { nomor_surat: true }
   })
 
-  let seq = existingCount + 1
-  for (let attempt = 0; attempt < 25; attempt++) {
-    const candidate = `BAP/SARPRA/${year}/${String(seq).padStart(4, '0')}`
-    const conflict = await tx.disposalRecord.findUnique({
-      where: { nomor_surat: candidate },
-      select: { id: true }
-    })
-    if (!conflict) return candidate
+  const used = new Set(existing.map(r => r.nomor_surat))
+  let seq = existing.length + 1
+  while (used.has(`BAP/SARPRA/${year}/${String(seq).padStart(4, '0')}`)) {
     seq++
   }
-
-  return `BAP/SARPRA/${year}/${Date.now().toString().slice(-6)}`
+  return `BAP/SARPRA/${year}/${String(seq).padStart(4, '0')}`
 }
 
 export interface NormalizedDisposalItemInput {
@@ -164,10 +166,10 @@ export interface NormalizedDisposalItemInput {
 }
 
 /**
- * Validate and enrich disposal line items against Sarpra, Lab, Book, or Manual inputs.
+ * Validate and enrich disposal line items in batched queries against Sarpra, Lab, Book, or Manual inputs.
  */
 export async function resolveAndValidateDisposalItems(
-  tx: Prisma.TransactionClient,
+  db: DbClient,
   rawItems: any[]
 ): Promise<NormalizedDisposalItemInput[]> {
   if (!Array.isArray(rawItems) || rawItems.length === 0) {
@@ -177,12 +179,9 @@ export async function resolveAndValidateDisposalItems(
     })
   }
 
-  const resolved: NormalizedDisposalItemInput[] = []
-
-  for (let idx = 0; idx < rawItems.length; idx++) {
-    const raw = rawItems[idx] || {}
+  const parsedRows = rawItems.map((raw, idx) => {
     const rowNum = idx + 1
-    const sumberRaw = String(raw.sumber_barang || 'sarpra').trim().toLowerCase()
+    const sumberRaw = String(raw?.sumber_barang || 'sarpra').trim().toLowerCase()
     if (!(DISPOSAL_SOURCES as readonly string[]).includes(sumberRaw)) {
       throw createError({
         statusCode: 422,
@@ -190,37 +189,74 @@ export async function resolveAndValidateDisposalItems(
       })
     }
     const sumber = sumberRaw as DisposalSource
-    const jumlah = Math.max(1, parseInt(String(raw.jumlah ?? 1), 10) || 1)
-
-    const kondisiRaw = String(raw.kondisi_akhir || 'rusak_berat').trim().toLowerCase()
+    const jumlah = Math.max(1, parseInt(String(raw?.jumlah ?? 1), 10) || 1)
+    const kondisiRaw = String(raw?.kondisi_akhir || 'rusak_berat').trim().toLowerCase()
     const kondisi_akhir = (DISPOSAL_CONDITIONS as readonly string[]).includes(kondisiRaw)
       ? kondisiRaw
       : 'rusak_berat'
-
-    const nilaiNum = raw.nilai_perkiraan !== undefined && raw.nilai_perkiraan !== null && raw.nilai_perkiraan !== ''
+    const nilaiNum = raw?.nilai_perkiraan !== undefined && raw?.nilai_perkiraan !== null && raw?.nilai_perkiraan !== ''
       ? Math.max(0, parseInt(String(raw.nilai_perkiraan), 10) || 0)
       : null
-    const nilai_perkiraan = nilaiNum !== null ? BigInt(nilaiNum) : null
 
-    const damage_report_id = parseOptionalBigIntId(raw.damage_report_id)
-    const alasan_item = raw.alasan_item ? String(raw.alasan_item).trim() : null
+    return {
+      rowNum,
+      raw: raw || {},
+      sumber,
+      jumlah,
+      kondisi_akhir,
+      nilai_perkiraan: nilaiNum !== null ? BigInt(nilaiNum) : null,
+      damage_report_id: parseOptionalBigIntId(raw?.damage_report_id),
+      alasan_item: raw?.alasan_item ? String(raw.alasan_item).trim() : null,
+      itemId: sumber === 'sarpra' ? parseBigIntId(raw?.item_id, `Baris ${rowNum} (Barang Sarpra)`) : null,
+      labItemId: sumber === 'lab' ? parseBigIntId(raw?.lab_item_id, `Baris ${rowNum} (Alat/Bahan Lab)`) : null,
+      bookId: sumber === 'buku' ? parseBigIntId(raw?.book_id, `Baris ${rowNum} (Buku)`) : null
+    }
+  })
 
-    if (sumber === 'sarpra') {
-      const itemId = parseBigIntId(raw.item_id, `Baris ${rowNum} (Barang Sarpra)`)
-      const dbItem = await tx.item.findUnique({
-        where: { id: itemId },
-        include: { category: { select: { nama_kategori: true } } }
-      })
+  const sarpraIds = [...new Set(parsedRows.filter(r => r.itemId !== null).map(r => r.itemId!))]
+  const labIds = [...new Set(parsedRows.filter(r => r.labItemId !== null).map(r => r.labItemId!))]
+  const bookIds = [...new Set(parsedRows.filter(r => r.bookId !== null).map(r => r.bookId!))]
+
+  const [dbItems, dbLabItems, dbBooks] = await Promise.all([
+    sarpraIds.length
+      ? db.item.findMany({
+          where: { id: { in: sarpraIds } },
+          include: { category: { select: { nama_kategori: true } } }
+        })
+      : Promise.resolve([]),
+    labIds.length
+      ? db.labItem.findMany({ where: { id: { in: labIds } } })
+      : Promise.resolve([]),
+    bookIds.length
+      ? db.book.findMany({ where: { id: { in: bookIds } } })
+      : Promise.resolve([])
+  ])
+
+  const sarpraMap = new Map(dbItems.map(i => [String(i.id), i]))
+  const labMap = new Map(dbLabItems.map(l => [String(l.id), l]))
+  const bookMap = new Map(dbBooks.map(b => [String(b.id), b]))
+
+  const sarpraTotals = new Map<string, number>()
+  const labTotals = new Map<string, number>()
+  const bookTotals = new Map<string, number>()
+
+  const resolved: NormalizedDisposalItemInput[] = []
+
+  for (const row of parsedRows) {
+    if (row.sumber === 'sarpra') {
+      const dbItem = sarpraMap.get(String(row.itemId))
       if (!dbItem) {
         throw createError({
           statusCode: 404,
-          statusMessage: `Baris ${rowNum}: Barang inventaris tidak ditemukan.`
+          statusMessage: `Baris ${row.rowNum}: Barang inventaris tidak ditemukan.`
         })
       }
-      if (jumlah > dbItem.stok_tersedia) {
+      const nextSum = (sarpraTotals.get(String(dbItem.id)) || 0) + row.jumlah
+      sarpraTotals.set(String(dbItem.id), nextSum)
+      if (nextSum > dbItem.stok_tersedia) {
         throw createError({
           statusCode: 422,
-          statusMessage: `Baris ${rowNum}: Stok tersedia "${dbItem.nama_barang}" hanya ${dbItem.stok_tersedia} (tidak cukup untuk memusnahkan ${jumlah} unit; pastikan barang tidak sedang dipinjam).`
+          statusMessage: `Baris ${row.rowNum}: Stok tersedia "${dbItem.nama_barang}" hanya ${dbItem.stok_tersedia} (tidak cukup untuk memusnahkan ${nextSum} unit; pastikan barang tidak sedang dipinjam).`
         })
       }
 
@@ -229,29 +265,30 @@ export async function resolveAndValidateDisposalItems(
         item_id: dbItem.id,
         lab_item_id: null,
         book_id: null,
-        damage_report_id,
+        damage_report_id: row.damage_report_id,
         kode_barang: dbItem.kode_barang,
         nama_barang: dbItem.nama_barang,
         kategori_sumber: dbItem.category?.nama_kategori || 'Inventaris Sarpra',
-        jumlah,
-        satuan: raw.satuan ? String(raw.satuan).trim() : 'unit',
-        kondisi_akhir,
-        nilai_perkiraan,
-        alasan_item
+        jumlah: row.jumlah,
+        satuan: row.raw.satuan ? String(row.raw.satuan).trim() : 'unit',
+        kondisi_akhir: row.kondisi_akhir,
+        nilai_perkiraan: row.nilai_perkiraan,
+        alasan_item: row.alasan_item
       })
-    } else if (sumber === 'lab') {
-      const labItemId = parseBigIntId(raw.lab_item_id, `Baris ${rowNum} (Alat/Bahan Lab)`)
-      const dbLab = await tx.labItem.findUnique({ where: { id: labItemId } })
+    } else if (row.sumber === 'lab') {
+      const dbLab = labMap.get(String(row.labItemId))
       if (!dbLab) {
         throw createError({
           statusCode: 404,
-          statusMessage: `Baris ${rowNum}: Item laboratorium tidak ditemukan.`
+          statusMessage: `Baris ${row.rowNum}: Item laboratorium tidak ditemukan.`
         })
       }
-      if (jumlah > dbLab.stok_tersedia) {
+      const nextSum = (labTotals.get(String(dbLab.id)) || 0) + row.jumlah
+      labTotals.set(String(dbLab.id), nextSum)
+      if (nextSum > dbLab.stok_tersedia) {
         throw createError({
           statusCode: 422,
-          statusMessage: `Baris ${rowNum}: Stok tersedia "${dbLab.nama_item}" hanya ${dbLab.stok_tersedia} ${dbLab.satuan}, tidak cukup untuk memusnahkan ${jumlah}.`
+          statusMessage: `Baris ${row.rowNum}: Stok tersedia "${dbLab.nama_item}" hanya ${dbLab.stok_tersedia} ${dbLab.satuan}, tidak cukup untuk memusnahkan ${nextSum}.`
         })
       }
 
@@ -260,29 +297,30 @@ export async function resolveAndValidateDisposalItems(
         item_id: null,
         lab_item_id: dbLab.id,
         book_id: null,
-        damage_report_id,
+        damage_report_id: row.damage_report_id,
         kode_barang: dbLab.kode_item,
         nama_barang: dbLab.nama_item,
         kategori_sumber: `Lab ${dbLab.lab_type.toUpperCase()} (${dbLab.item_type === 'bahan_habis_pakai' ? 'Bahan' : 'Alat'})`,
-        jumlah,
-        satuan: raw.satuan ? String(raw.satuan).trim() : dbLab.satuan || 'unit',
-        kondisi_akhir,
-        nilai_perkiraan,
-        alasan_item
+        jumlah: row.jumlah,
+        satuan: row.raw.satuan ? String(row.raw.satuan).trim() : dbLab.satuan || 'unit',
+        kondisi_akhir: row.kondisi_akhir,
+        nilai_perkiraan: row.nilai_perkiraan,
+        alasan_item: row.alasan_item
       })
-    } else if (sumber === 'buku') {
-      const bookId = parseBigIntId(raw.book_id, `Baris ${rowNum} (Buku)`)
-      const dbBook = await tx.book.findUnique({ where: { id: bookId } })
+    } else if (row.sumber === 'buku') {
+      const dbBook = bookMap.get(String(row.bookId))
       if (!dbBook) {
         throw createError({
           statusCode: 404,
-          statusMessage: `Baris ${rowNum}: Data buku tidak ditemukan.`
+          statusMessage: `Baris ${row.rowNum}: Data buku tidak ditemukan.`
         })
       }
-      if (jumlah > dbBook.stok_tersedia) {
+      const nextSum = (bookTotals.get(String(dbBook.id)) || 0) + row.jumlah
+      bookTotals.set(String(dbBook.id), nextSum)
+      if (nextSum > dbBook.stok_tersedia) {
         throw createError({
           statusCode: 422,
-          statusMessage: `Baris ${rowNum}: Stok tersedia buku "${dbBook.judul}" hanya ${dbBook.stok_tersedia} eks, tidak cukup untuk memusnahkan ${jumlah} eks.`
+          statusMessage: `Baris ${row.rowNum}: Stok tersedia buku "${dbBook.judul}" hanya ${dbBook.stok_tersedia} eks, tidak cukup untuk memusnahkan ${nextSum} eks.`
         })
       }
 
@@ -291,22 +329,22 @@ export async function resolveAndValidateDisposalItems(
         item_id: null,
         lab_item_id: null,
         book_id: dbBook.id,
-        damage_report_id,
+        damage_report_id: row.damage_report_id,
         kode_barang: dbBook.kode_buku,
         nama_barang: `${dbBook.judul} (Kelas ${dbBook.kelas})`,
         kategori_sumber: `${dbBook.penerbit || 'Buku'} • ${dbBook.sumber_dana}`,
-        jumlah,
-        satuan: raw.satuan ? String(raw.satuan).trim() : 'eks',
-        kondisi_akhir,
-        nilai_perkiraan,
-        alasan_item
+        jumlah: row.jumlah,
+        satuan: row.raw.satuan ? String(row.raw.satuan).trim() : 'eks',
+        kondisi_akhir: row.kondisi_akhir,
+        nilai_perkiraan: row.nilai_perkiraan,
+        alasan_item: row.alasan_item
       })
     } else {
-      const cleanNama = String(raw.nama_barang || '').trim()
+      const cleanNama = String(row.raw.nama_barang || '').trim()
       if (!cleanNama) {
         throw createError({
           statusCode: 422,
-          statusMessage: `Baris ${rowNum}: Nama barang manual wajib diisi.`
+          statusMessage: `Baris ${row.rowNum}: Nama barang manual wajib diisi.`
         })
       }
 
@@ -315,15 +353,15 @@ export async function resolveAndValidateDisposalItems(
         item_id: null,
         lab_item_id: null,
         book_id: null,
-        damage_report_id,
-        kode_barang: raw.kode_barang ? String(raw.kode_barang).trim() : null,
+        damage_report_id: row.damage_report_id,
+        kode_barang: row.raw.kode_barang ? String(row.raw.kode_barang).trim() : null,
         nama_barang: cleanNama,
-        kategori_sumber: raw.kategori_sumber ? String(raw.kategori_sumber).trim() : 'Non-Katalog / Manual',
-        jumlah,
-        satuan: raw.satuan ? String(raw.satuan).trim() : 'unit',
-        kondisi_akhir,
-        nilai_perkiraan,
-        alasan_item
+        kategori_sumber: row.raw.kategori_sumber ? String(row.raw.kategori_sumber).trim() : 'Non-Katalog / Manual',
+        jumlah: row.jumlah,
+        satuan: row.raw.satuan ? String(row.raw.satuan).trim() : 'unit',
+        kondisi_akhir: row.kondisi_akhir,
+        nilai_perkiraan: row.nilai_perkiraan,
+        alasan_item: row.alasan_item
       })
     }
   }
@@ -333,15 +371,16 @@ export async function resolveAndValidateDisposalItems(
 
 /**
  * Idempotently deduct inventory stock for every line item in a DisposalRecord
- * and mark linked DamageReport tickets as resolved via disposal.
+ * using batched reads & parallel writes to stay well under TiDB/Prisma tx limits.
  */
 export async function deductStockForDisposal(
   tx: Prisma.TransactionClient,
   disposalId: bigint,
   nomorSurat: string,
-  executorUserId: bigint
+  executorUserId: bigint,
+  preloadedRecord?: { stok_terpotong: boolean; items: any[] } | null
 ): Promise<number> {
-  const record = await tx.disposalRecord.findUnique({
+  const record = preloadedRecord || await tx.disposalRecord.findUnique({
     where: { id: disposalId },
     include: { items: true }
   })
@@ -354,116 +393,160 @@ export async function deductStockForDisposal(
     return 0
   }
 
-  let deductedCount = 0
+  const pendingLines = (record.items || []).filter(line => !line.stok_dipotong)
 
-  for (const line of record.items) {
-    if (!line.stok_dipotong) {
-      if (line.sumber_barang === 'sarpra' && line.item_id) {
-        const dbItem = await tx.item.findUnique({ where: { id: line.item_id } })
-        if (dbItem) {
-          if (line.jumlah > dbItem.stok_tersedia) {
-            throw createError({
-              statusCode: 422,
-              statusMessage: `Stok tersedia "${dbItem.nama_barang}" tinggal ${dbItem.stok_tersedia}, tidak mencukupi untuk memusnahkan ${line.jumlah} ${line.satuan}.`
-            })
-          }
-          const nextTotal = Math.max(0, dbItem.total_stok - line.jumlah)
-          const nextAvail = Math.max(0, dbItem.stok_tersedia - line.jumlah)
-          await tx.item.update({
-            where: { id: dbItem.id },
-            data: {
-              total_stok: nextTotal,
-              stok_tersedia: nextAvail,
-              ...(nextTotal === 0 ? { kondisi: 'rusak_berat' } : {})
-            }
-          })
-          deductedCount++
-        }
-      } else if (line.sumber_barang === 'lab' && line.lab_item_id) {
-        const dbLab = await tx.labItem.findUnique({ where: { id: line.lab_item_id } })
-        if (dbLab) {
-          if (line.jumlah > dbLab.stok_tersedia) {
-            throw createError({
-              statusCode: 422,
-              statusMessage: `Stok tersedia "${dbLab.nama_item}" tinggal ${dbLab.stok_tersedia} ${dbLab.satuan}, tidak mencukupi untuk memusnahkan ${line.jumlah}.`
-            })
-          }
-          const nextTotal = Math.max(0, dbLab.stok_total - line.jumlah)
-          const nextAvail = Math.max(0, dbLab.stok_tersedia - line.jumlah)
-          await tx.labItem.update({
-            where: { id: dbLab.id },
-            data: {
-              stok_total: nextTotal,
-              stok_tersedia: nextAvail,
-              ...(nextTotal === 0 ? { kondisi: 'habis' } : {})
-            }
-          })
-          deductedCount++
-        }
-      } else if (line.sumber_barang === 'buku' && line.book_id) {
-        const dbBook = await tx.book.findUnique({ where: { id: line.book_id } })
-        if (dbBook) {
-          if (line.jumlah > dbBook.stok_tersedia) {
-            throw createError({
-              statusCode: 422,
-              statusMessage: `Stok tersedia buku "${dbBook.judul}" tinggal ${dbBook.stok_tersedia} eks, tidak mencukupi untuk memusnahkan ${line.jumlah} eks.`
-            })
-          }
-          const nextTotal = Math.max(0, dbBook.total_stok - line.jumlah)
-          const nextAvail = Math.max(0, dbBook.stok_tersedia - line.jumlah)
-          await tx.book.update({
-            where: { id: dbBook.id },
-            data: {
-              total_stok: nextTotal,
-              stok_tersedia: nextAvail,
-              ...(nextTotal === 0 ? { kondisi: 'rusak_berat' } : {})
-            }
-          })
-          deductedCount++
-        }
-      }
+  const sarpraQtyMap = new Map<string, { id: bigint; qty: number }>()
+  const labQtyMap = new Map<string, { id: bigint; qty: number }>()
+  const bookQtyMap = new Map<string, { id: bigint; qty: number }>()
+  const damageIds = new Set<string>()
+  const damageBigIntMap = new Map<string, bigint>()
 
-      if (line.damage_report_id) {
-        const dmg = await tx.damageReport.findUnique({ where: { id: line.damage_report_id } })
-        if (dmg && dmg.status !== 'selesai') {
-          const oldStatus = dmg.status
-          const actionText = `Barang dimusnahkan sesuai Berita Acara Pemusnahan ${nomorSurat}.`
-          await tx.damageReport.update({
-            where: { id: dmg.id },
-            data: {
-              status: 'selesai',
-              tanggal_selesai: new Date(),
-              tindakan_perbaikan: dmg.tindakan_perbaikan
-                ? `${dmg.tindakan_perbaikan}\n${actionText}`
-                : actionText
-            }
-          })
-          await tx.damageActionLog.create({
-            data: {
-              damage_report_id: dmg.id,
-              user_id: executorUserId,
-              status_lama: oldStatus,
-              status_baru: 'selesai',
-              catatan_tindakan: actionText
-            }
-          })
-        }
-      }
+  for (const line of pendingLines) {
+    if (line.sumber_barang === 'sarpra' && line.item_id) {
+      const k = String(line.item_id)
+      const prev = sarpraQtyMap.get(k)
+      sarpraQtyMap.set(k, { id: BigInt(line.item_id), qty: (prev?.qty || 0) + Number(line.jumlah || 0) })
+    } else if (line.sumber_barang === 'lab' && line.lab_item_id) {
+      const k = String(line.lab_item_id)
+      const prev = labQtyMap.get(k)
+      labQtyMap.set(k, { id: BigInt(line.lab_item_id), qty: (prev?.qty || 0) + Number(line.jumlah || 0) })
+    } else if (line.sumber_barang === 'buku' && line.book_id) {
+      const k = String(line.book_id)
+      const prev = bookQtyMap.get(k)
+      bookQtyMap.set(k, { id: BigInt(line.book_id), qty: (prev?.qty || 0) + Number(line.jumlah || 0) })
+    }
 
-      await tx.disposalItem.update({
-        where: { id: line.id },
-        data: { stok_dipotong: true }
-      })
+    if (line.damage_report_id) {
+      const dk = String(line.damage_report_id)
+      damageIds.add(dk)
+      damageBigIntMap.set(dk, BigInt(line.damage_report_id))
     }
   }
 
-  await tx.disposalRecord.update({
-    where: { id: disposalId },
-    data: {
-      stok_terpotong: true,
-      executed_at: new Date()
+  const [dbItems, dbLabs, dbBooks, dbDamages] = await Promise.all([
+    sarpraQtyMap.size ? tx.item.findMany({ where: { id: { in: [...sarpraQtyMap.values()].map(v => v.id) } } }) : Promise.resolve([]),
+    labQtyMap.size ? tx.labItem.findMany({ where: { id: { in: [...labQtyMap.values()].map(v => v.id) } } }) : Promise.resolve([]),
+    bookQtyMap.size ? tx.book.findMany({ where: { id: { in: [...bookQtyMap.values()].map(v => v.id) } } }) : Promise.resolve([]),
+    damageIds.size ? tx.damageReport.findMany({ where: { id: { in: [...damageBigIntMap.values()] } } }) : Promise.resolve([])
+  ])
+
+  const writePromises: Promise<any>[] = []
+  let deductedCount = 0
+
+  for (const dbItem of dbItems) {
+    const reqQty = sarpraQtyMap.get(String(dbItem.id))?.qty || 0
+    if (reqQty <= 0) continue
+    if (reqQty > dbItem.stok_tersedia) {
+      throw createError({
+        statusCode: 422,
+        statusMessage: `Stok tersedia "${dbItem.nama_barang}" tinggal ${dbItem.stok_tersedia}, tidak mencukupi untuk memusnahkan ${reqQty} unit.`
+      })
     }
-  })
+    const nextTotal = Math.max(0, dbItem.total_stok - reqQty)
+    const nextAvail = Math.max(0, dbItem.stok_tersedia - reqQty)
+    writePromises.push(
+      tx.item.update({
+        where: { id: dbItem.id },
+        data: {
+          total_stok: nextTotal,
+          stok_tersedia: nextAvail,
+          ...(nextTotal === 0 ? { kondisi: 'rusak_berat' } : {})
+        }
+      })
+    )
+    deductedCount++
+  }
+
+  for (const dbLab of dbLabs) {
+    const reqQty = labQtyMap.get(String(dbLab.id))?.qty || 0
+    if (reqQty <= 0) continue
+    if (reqQty > dbLab.stok_tersedia) {
+      throw createError({
+        statusCode: 422,
+        statusMessage: `Stok tersedia "${dbLab.nama_item}" tinggal ${dbLab.stok_tersedia} ${dbLab.satuan}, tidak mencukupi untuk memusnahkan ${reqQty}.`
+      })
+    }
+    const nextTotal = Math.max(0, dbLab.stok_total - reqQty)
+    const nextAvail = Math.max(0, dbLab.stok_tersedia - reqQty)
+    writePromises.push(
+      tx.labItem.update({
+        where: { id: dbLab.id },
+        data: {
+          stok_total: nextTotal,
+          stok_tersedia: nextAvail,
+          ...(nextTotal === 0 ? { kondisi: 'habis' } : {})
+        }
+      })
+    )
+    deductedCount++
+  }
+
+  for (const dbBook of dbBooks) {
+    const reqQty = bookQtyMap.get(String(dbBook.id))?.qty || 0
+    if (reqQty <= 0) continue
+    if (reqQty > dbBook.stok_tersedia) {
+      throw createError({
+        statusCode: 422,
+        statusMessage: `Stok tersedia buku "${dbBook.judul}" tinggal ${dbBook.stok_tersedia} eks, tidak mencukupi untuk memusnahkan ${reqQty} eks.`
+      })
+    }
+    const nextTotal = Math.max(0, dbBook.total_stok - reqQty)
+    const nextAvail = Math.max(0, dbBook.stok_tersedia - reqQty)
+    writePromises.push(
+      tx.book.update({
+        where: { id: dbBook.id },
+        data: {
+          total_stok: nextTotal,
+          stok_tersedia: nextAvail,
+          ...(nextTotal === 0 ? { kondisi: 'rusak_berat' } : {})
+        }
+      })
+    )
+    deductedCount++
+  }
+
+  const actionText = `Barang dimusnahkan sesuai Berita Acara Pemusnahan ${nomorSurat}.`
+  for (const dmg of dbDamages) {
+    if (dmg.status === 'selesai') continue
+    const oldStatus = dmg.status
+    writePromises.push(
+      tx.damageReport.update({
+        where: { id: dmg.id },
+        data: {
+          status: 'selesai',
+          tanggal_selesai: new Date(),
+          tindakan_perbaikan: dmg.tindakan_perbaikan
+            ? `${dmg.tindakan_perbaikan}\n${actionText}`
+            : actionText
+        }
+      }),
+      tx.damageActionLog.create({
+        data: {
+          damage_report_id: dmg.id,
+          user_id: executorUserId,
+          status_lama: oldStatus,
+          status_baru: 'selesai',
+          catatan_tindakan: actionText
+        }
+      })
+    )
+  }
+
+  writePromises.push(
+    tx.disposalItem.updateMany({
+      where: { disposal_id: disposalId, stok_dipotong: false },
+      data: { stok_dipotong: true }
+    }),
+    tx.disposalRecord.update({
+      where: { id: disposalId },
+      data: {
+        stok_terpotong: true,
+        executed_at: new Date()
+      }
+    })
+  )
+
+  await Promise.all(writePromises)
 
   return deductedCount
 }
@@ -482,50 +565,80 @@ export async function restoreStockForDisposal(
 
   if (!record || !record.stok_terpotong) return 0
 
-  let restoredCount = 0
+  const deductedLines = record.items.filter(line => line.stok_dipotong)
+  const sarpraQtyMap = new Map<string, { id: bigint; qty: number }>()
+  const labQtyMap = new Map<string, { id: bigint; qty: number }>()
+  const bookQtyMap = new Map<string, { id: bigint; qty: number }>()
 
-  for (const line of record.items) {
-    if (!line.stok_dipotong) continue
-
+  for (const line of deductedLines) {
     if (line.sumber_barang === 'sarpra' && line.item_id) {
-      const dbItem = await tx.item.findUnique({ where: { id: line.item_id } })
-      if (dbItem) {
-        await tx.item.update({
-          where: { id: dbItem.id },
-          data: {
-            total_stok: dbItem.total_stok + line.jumlah,
-            stok_tersedia: dbItem.stok_tersedia + line.jumlah
-          }
-        })
-        restoredCount++
-      }
+      const k = String(line.item_id)
+      sarpraQtyMap.set(k, { id: line.item_id, qty: (sarpraQtyMap.get(k)?.qty || 0) + line.jumlah })
     } else if (line.sumber_barang === 'lab' && line.lab_item_id) {
-      const dbLab = await tx.labItem.findUnique({ where: { id: line.lab_item_id } })
-      if (dbLab) {
-        await tx.labItem.update({
-          where: { id: dbLab.id },
-          data: {
-            stok_total: dbLab.stok_total + line.jumlah,
-            stok_tersedia: dbLab.stok_tersedia + line.jumlah,
-            ...(dbLab.kondisi === 'habis' ? { kondisi: 'rusak_berat' } : {})
-          }
-        })
-        restoredCount++
-      }
+      const k = String(line.lab_item_id)
+      labQtyMap.set(k, { id: line.lab_item_id, qty: (labQtyMap.get(k)?.qty || 0) + line.jumlah })
     } else if (line.sumber_barang === 'buku' && line.book_id) {
-      const dbBook = await tx.book.findUnique({ where: { id: line.book_id } })
-      if (dbBook) {
-        await tx.book.update({
-          where: { id: dbBook.id },
-          data: {
-            total_stok: dbBook.total_stok + line.jumlah,
-            stok_tersedia: dbBook.stok_tersedia + line.jumlah
-          }
-        })
-        restoredCount++
-      }
+      const k = String(line.book_id)
+      bookQtyMap.set(k, { id: line.book_id, qty: (bookQtyMap.get(k)?.qty || 0) + line.jumlah })
     }
   }
+
+  const [dbItems, dbLabs, dbBooks] = await Promise.all([
+    sarpraQtyMap.size ? tx.item.findMany({ where: { id: { in: [...sarpraQtyMap.values()].map(v => v.id) } } }) : Promise.resolve([]),
+    labQtyMap.size ? tx.labItem.findMany({ where: { id: { in: [...labQtyMap.values()].map(v => v.id) } } }) : Promise.resolve([]),
+    bookQtyMap.size ? tx.book.findMany({ where: { id: { in: [...bookQtyMap.values()].map(v => v.id) } } }) : Promise.resolve([])
+  ])
+
+  const writePromises: Promise<any>[] = []
+  let restoredCount = 0
+
+  for (const dbItem of dbItems) {
+    const qty = sarpraQtyMap.get(String(dbItem.id))?.qty || 0
+    if (qty <= 0) continue
+    writePromises.push(
+      tx.item.update({
+        where: { id: dbItem.id },
+        data: {
+          total_stok: dbItem.total_stok + qty,
+          stok_tersedia: dbItem.stok_tersedia + qty
+        }
+      })
+    )
+    restoredCount++
+  }
+
+  for (const dbLab of dbLabs) {
+    const qty = labQtyMap.get(String(dbLab.id))?.qty || 0
+    if (qty <= 0) continue
+    writePromises.push(
+      tx.labItem.update({
+        where: { id: dbLab.id },
+        data: {
+          stok_total: dbLab.stok_total + qty,
+          stok_tersedia: dbLab.stok_tersedia + qty,
+          ...(dbLab.kondisi === 'habis' ? { kondisi: 'rusak_berat' } : {})
+        }
+      })
+    )
+    restoredCount++
+  }
+
+  for (const dbBook of dbBooks) {
+    const qty = bookQtyMap.get(String(dbBook.id))?.qty || 0
+    if (qty <= 0) continue
+    writePromises.push(
+      tx.book.update({
+        where: { id: dbBook.id },
+        data: {
+          total_stok: dbBook.total_stok + qty,
+          stok_tersedia: dbBook.stok_tersedia + qty
+        }
+      })
+    )
+    restoredCount++
+  }
+
+  await Promise.all(writePromises)
 
   return restoredCount
 }

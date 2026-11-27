@@ -1,6 +1,6 @@
 import { prisma } from '~/server/utils/prisma'
 import { requireStaff } from '~/server/utils/auth'
-import { parseBigIntId, restoreStockForDisposal } from '~/server/utils/disposals'
+import { DISPOSAL_TX_OPTIONS, parseBigIntId, restoreStockForDisposal } from '~/server/utils/disposals'
 
 export default defineEventHandler(async (event) => {
   const staff = await requireStaff(event)
@@ -53,7 +53,7 @@ export default defineEventHandler(async (event) => {
     })
 
     return { nomorSurat: existing.nomor_surat, restoredCount }
-  })
+  }, DISPOSAL_TX_OPTIONS)
 
   return {
     success: true,
