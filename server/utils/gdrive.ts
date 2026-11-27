@@ -6,7 +6,7 @@ import { createError } from 'h3'
 
 export const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
 export const STAFF_ALLOWED_MIME_TYPES = [...IMAGE_MIME_TYPES, 'application/pdf'] as const
-export const ALLOWED_DRIVE_FOLDERS = ['Kerusakan', 'Perbaikan', 'Pengadaan', 'BAST', 'Buku', 'Aset'] as const
+export const ALLOWED_DRIVE_FOLDERS = ['Kerusakan', 'Perbaikan', 'Pengadaan', 'BAST', 'Buku', 'Aset', 'Pemusnahan'] as const
 
 // Batas aman 3 MB biner (~4 MB JSON base64) agar selalu di bawah limit 4.5 MB Vercel Serverless
 export const MAX_RAW_UPLOAD_BYTES = 3 * 1024 * 1024

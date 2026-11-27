@@ -34,6 +34,8 @@ model User {
   technician_damage_reports  DamageReport[]       @relation("TechnicianDamageReports")
   damage_action_logs         DamageActionLog[]    @relation("UserDamageActionLogs")
   book_handovers             BookHandover[]       @relation("UserBookHandovers")
+  created_disposals          DisposalRecord[]     @relation("UserCreatedDisposals")
+  approved_disposals         DisposalRecord[]     @relation("UserApprovedDisposals")
 
   @@map("users")
 }
@@ -84,9 +86,10 @@ model Item {
   created_at         DateTime? @default(now())
   updated_at         DateTime? @updatedAt
 
-  category     Category         @relation(fields: [category_id], references: [id], onDelete: Cascade)
-  loan_details ItemLoanDetail[]
+  category       Category         @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  loan_details   ItemLoanDetail[]
   damage_reports DamageReport[]
+  disposal_items DisposalItem[]
 
   @@index([category_id])
   @@map("items")
@@ -252,6 +255,7 @@ model LabItem {
   room             Room?               @relation(fields: [room_id], references: [id], onDelete: SetNull)
   usage_logs       LabUsageLog[]
   maintenance_logs LabMaintenanceLog[]
+  disposal_items   DisposalItem[]
 
   @@index([room_id])
   @@index([lab_type])
@@ -325,9 +329,10 @@ model DamageReport {
 
   pelapor    User               @relation("UserDamageReports", fields: [pelapor_id], references: [id], onDelete: Cascade)
   teknisi    User?              @relation("TechnicianDamageReports", fields: [ditugaskan_ke], references: [id], onDelete: SetNull)
-  room       Room?              @relation(fields: [room_id], references: [id], onDelete: SetNull)
-  item       Item?              @relation(fields: [item_id], references: [id], onDelete: SetNull)
-  logs       DamageActionLog[]
+  room           Room?              @relation(fields: [room_id], references: [id], onDelete: SetNull)
+  item           Item?              @relation(fields: [item_id], references: [id], onDelete: SetNull)
+  logs           DamageActionLog[]
+  disposal_items DisposalItem[]
 
   @@index([pelapor_id])
   @@index([room_id])
@@ -377,6 +382,7 @@ model Book {
   updated_at      DateTime? @updatedAt
 
   handover_items  BookHandoverItem[]
+  disposal_items  DisposalItem[]
 
   @@index([kelas])
   @@index([kurikulum])
@@ -433,6 +439,79 @@ model BookHandoverItem {
   @@index([handover_id])
   @@index([book_id])
   @@map("book_handover_items")
+}
+
+model DisposalRecord {
+  id                       BigInt    @id @default(autoincrement())
+  nomor_surat              String    @unique @db.VarChar(100) // e.g. BAP/SARPRA/2026/0001
+  judul_acara              String    @default("BERITA ACARA PEMUSNAHAN BARANG / ASET SEKOLAH") @db.VarChar(255)
+  tahun_anggaran           Int       @default(2026)
+  tanggal_pemusnahan       DateTime  @db.Date
+  lokasi_pemusnahan        String?   @db.VarChar(255)
+  metode_pemusnahan        String    @default("dihancurkan") @db.VarChar(100) // dihancurkan, dibakar, dibongkar_daur_ulang, limbah_b3, dibuang_tps, lainnya
+  alasan_umum              String    @db.Text
+  status                   String    @default("menunggu_persetujuan") @db.VarChar(50) // menunggu_persetujuan, disetujui, selesai, ditolak
+  stok_terpotong           Boolean   @default(false)
+  executed_at              DateTime?
+  penanggung_jawab_nama    String    @default("Emanuel Suryajaya, S.Kom.") @db.VarChar(255)
+  penanggung_jawab_jabatan String    @default("Koordinator Sarpra SMA Nusaputera") @db.VarChar(255)
+  saksi_nama               String?   @db.VarChar(255)
+  saksi_jabatan            String?   @db.VarChar(255)
+  mengetahui_nama          String    @default("Nining Tri Palupi, S.Pd., M.Pd.") @db.VarChar(255)
+  mengetahui_jabatan       String    @default("Kepala SMA Nusaputera") @db.VarChar(255)
+  foto_sebelum             String?   @db.Text
+  foto_pemusnahan          String?   @db.Text
+  file_bast_signed         String?   @db.Text
+  catatan_admin            String?   @db.Text
+  created_by               BigInt
+  approved_by              BigInt?
+  approved_at              DateTime?
+  created_at               DateTime? @default(now())
+  updated_at               DateTime? @updatedAt
+
+  creator  User           @relation("UserCreatedDisposals", fields: [created_by], references: [id], onDelete: Cascade)
+  approver User?          @relation("UserApprovedDisposals", fields: [approved_by], references: [id], onDelete: SetNull)
+  items    DisposalItem[]
+
+  @@index([status])
+  @@index([tahun_anggaran])
+  @@index([tanggal_pemusnahan])
+  @@index([created_by])
+  @@index([approved_by])
+  @@map("disposal_records")
+}
+
+model DisposalItem {
+  id               BigInt   @id @default(autoincrement())
+  disposal_id      BigInt
+  sumber_barang    String   @default("sarpra") @db.VarChar(50) // sarpra, lab, buku, manual
+  item_id          BigInt?
+  lab_item_id      BigInt?
+  book_id          BigInt?
+  damage_report_id BigInt?
+  kode_barang      String?  @db.VarChar(100)
+  nama_barang      String   @db.VarChar(255)
+  kategori_sumber  String?  @db.VarChar(150)
+  jumlah           Int      @default(1)
+  satuan           String   @default("unit") @db.VarChar(50)
+  kondisi_akhir    String   @default("rusak_berat") @db.VarChar(100) // rusak_berat, kadaluarsa, usang, hilang_susut, lainnya
+  nilai_perkiraan  BigInt?
+  alasan_item      String?  @db.Text
+  stok_dipotong    Boolean  @default(false)
+
+  disposal      DisposalRecord @relation(fields: [disposal_id], references: [id], onDelete: Cascade)
+  item          Item?          @relation(fields: [item_id], references: [id], onDelete: SetNull)
+  lab_item      LabItem?       @relation(fields: [lab_item_id], references: [id], onDelete: SetNull)
+  book          Book?          @relation(fields: [book_id], references: [id], onDelete: SetNull)
+  damage_report DamageReport?  @relation(fields: [damage_report_id], references: [id], onDelete: SetNull)
+
+  @@index([disposal_id])
+  @@index([sumber_barang])
+  @@index([item_id])
+  @@index([lab_item_id])
+  @@index([book_id])
+  @@index([damage_report_id])
+  @@map("disposal_items")
 }
 
 

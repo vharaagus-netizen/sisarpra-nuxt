@@ -17,7 +17,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   // Proteksi halaman khusus Petugas / Admin
-  const staffOnlyRoutes = ['/manage', '/approvals', '/reports']
+  const staffOnlyRoutes = ['/manage', '/approvals', '/reports', '/procurements', '/books', '/disposals']
   if (staffOnlyRoutes.some(prefix => to.path.startsWith(prefix))) {
     if (!isStaff.value) {
       return navigateTo('/dashboard')

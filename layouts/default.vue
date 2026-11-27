@@ -236,6 +236,19 @@ const triggerPwaInstall = () => {
                   <span>📚</span>
                   <span>Inventaris Buku & BAST</span>
                 </NuxtLink>
+
+                <NuxtLink
+                  to="/disposals"
+                  :class="[
+                    'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200',
+                    isActive('/disposals')
+                      ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-white'
+                  ]"
+                >
+                  <span>🔥</span>
+                  <span>Pemusnahan Barang</span>
+                </NuxtLink>
               </div>
             </div>
 

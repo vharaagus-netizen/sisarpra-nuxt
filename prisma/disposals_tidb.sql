@@ -1,0 +1,75 @@
+-- =====================================================================
+-- SISARPRA SMA NUSAPUTERA SEMARANG
+-- Idempotent TiDB / MySQL DDL for Pemusnahan Barang (Disposal)
+-- Menyesuaikan tipe kolom BIGINT UNSIGNED pada tabel existing TiDB Cloud.
+-- Aman dijalankan tanpa menghapus atau mengubah tabel yang sudah ada.
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS `disposal_records` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `nomor_surat` VARCHAR(100) NOT NULL,
+  `judul_acara` VARCHAR(255) NOT NULL DEFAULT 'BERITA ACARA PEMUSNAHAN BARANG / ASET SEKOLAH',
+  `tahun_anggaran` INT NOT NULL DEFAULT 2026,
+  `tanggal_pemusnahan` DATE NOT NULL,
+  `lokasi_pemusnahan` VARCHAR(255) NULL,
+  `metode_pemusnahan` VARCHAR(100) NOT NULL DEFAULT 'dihancurkan',
+  `alasan_umum` TEXT NOT NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'menunggu_persetujuan',
+  `stok_terpotong` BOOLEAN NOT NULL DEFAULT false,
+  `executed_at` DATETIME(3) NULL,
+  `penanggung_jawab_nama` VARCHAR(255) NOT NULL DEFAULT 'Emanuel Suryajaya, S.Kom.',
+  `penanggung_jawab_jabatan` VARCHAR(255) NOT NULL DEFAULT 'Koordinator Sarpra SMA Nusaputera',
+  `saksi_nama` VARCHAR(255) NULL,
+  `saksi_jabatan` VARCHAR(255) NULL,
+  `mengetahui_nama` VARCHAR(255) NOT NULL DEFAULT 'Nining Tri Palupi, S.Pd., M.Pd.',
+  `mengetahui_jabatan` VARCHAR(255) NOT NULL DEFAULT 'Kepala SMA Nusaputera',
+  `foto_sebelum` TEXT NULL,
+  `foto_pemusnahan` TEXT NULL,
+  `file_bast_signed` TEXT NULL,
+  `catatan_admin` TEXT NULL,
+  `created_by` BIGINT UNSIGNED NOT NULL,
+  `approved_by` BIGINT UNSIGNED NULL,
+  `approved_at` DATETIME(3) NULL,
+  `created_at` DATETIME(3) NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `disposal_records_nomor_surat_key`(`nomor_surat`),
+  INDEX `disposal_records_status_idx`(`status`),
+  INDEX `disposal_records_tahun_anggaran_idx`(`tahun_anggaran`),
+  INDEX `disposal_records_tanggal_pemusnahan_idx`(`tanggal_pemusnahan`),
+  INDEX `disposal_records_created_by_idx`(`created_by`),
+  INDEX `disposal_records_approved_by_idx`(`approved_by`),
+  CONSTRAINT `disposal_records_created_by_fkey` FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `disposal_records_approved_by_fkey` FOREIGN KEY (`approved_by`) REFERENCES `users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `disposal_items` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `disposal_id` BIGINT UNSIGNED NOT NULL,
+  `sumber_barang` VARCHAR(50) NOT NULL DEFAULT 'sarpra',
+  `item_id` BIGINT UNSIGNED NULL,
+  `lab_item_id` BIGINT UNSIGNED NULL,
+  `book_id` BIGINT UNSIGNED NULL,
+  `damage_report_id` BIGINT NULL,
+  `kode_barang` VARCHAR(100) NULL,
+  `nama_barang` VARCHAR(255) NOT NULL,
+  `kategori_sumber` VARCHAR(150) NULL,
+  `jumlah` INT NOT NULL DEFAULT 1,
+  `satuan` VARCHAR(50) NOT NULL DEFAULT 'unit',
+  `kondisi_akhir` VARCHAR(100) NOT NULL DEFAULT 'rusak_berat',
+  `nilai_perkiraan` BIGINT NULL,
+  `alasan_item` TEXT NULL,
+  `stok_dipotong` BOOLEAN NOT NULL DEFAULT false,
+  PRIMARY KEY (`id`),
+  INDEX `disposal_items_disposal_id_idx`(`disposal_id`),
+  INDEX `disposal_items_sumber_barang_idx`(`sumber_barang`),
+  INDEX `disposal_items_item_id_idx`(`item_id`),
+  INDEX `disposal_items_lab_item_id_idx`(`lab_item_id`),
+  INDEX `disposal_items_book_id_idx`(`book_id`),
+  INDEX `disposal_items_damage_report_id_idx`(`damage_report_id`),
+  CONSTRAINT `disposal_items_disposal_id_fkey` FOREIGN KEY (`disposal_id`) REFERENCES `disposal_records`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `disposal_items_item_id_fkey` FOREIGN KEY (`item_id`) REFERENCES `items`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `disposal_items_lab_item_id_fkey` FOREIGN KEY (`lab_item_id`) REFERENCES `lab_items`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `disposal_items_book_id_fkey` FOREIGN KEY (`book_id`) REFERENCES `books`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `disposal_items_damage_report_id_fkey` FOREIGN KEY (`damage_report_id`) REFERENCES `damage_reports`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

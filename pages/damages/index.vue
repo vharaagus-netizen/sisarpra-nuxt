@@ -607,6 +607,14 @@ const formatCurrency = (amount) => {
             </button>
 
             <div class="flex items-center gap-1.5">
+              <NuxtLink
+                v-if="isStaff && item.status !== 'selesai' && item.status !== 'ditolak'"
+                :to="{ path: '/disposals', query: { fromDamage: String(item.id) } }"
+                class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 transition-colors"
+                title="Ajukan pemusnahan untuk barang rusak ini"
+              >
+                🔥 Musnahkan
+              </NuxtLink>
               <button
                 v-if="isStaff"
                 type="button"
@@ -992,15 +1000,24 @@ const formatCurrency = (amount) => {
         </div>
 
         <div class="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800">
-          <button
-            v-if="isStaff"
-            type="button"
-            @click="openActionModal(activeReport)"
-            class="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-500 text-white shadow-md shadow-orange-600/20"
-          >
-            Update Tiket Ini
-          </button>
-          <div v-else></div>
+          <div class="flex items-center gap-2">
+            <button
+              v-if="isStaff"
+              type="button"
+              @click="openActionModal(activeReport)"
+              class="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-500 text-white shadow-md shadow-orange-600/20"
+            >
+              Update Tiket Ini
+            </button>
+            <NuxtLink
+              v-if="isStaff && activeReport.status !== 'selesai' && activeReport.status !== 'ditolak'"
+              :to="{ path: '/disposals', query: { fromDamage: String(activeReport.id) } }"
+              class="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+            >
+              🔥 Ajukan Pemusnahan
+            </NuxtLink>
+          </div>
+          <div v-if="!isStaff"></div>
 
           <button
             type="button"
